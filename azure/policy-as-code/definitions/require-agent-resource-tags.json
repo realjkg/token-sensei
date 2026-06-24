@@ -1,0 +1,59 @@
+{
+  "properties": {
+    "displayName": "AI agent platform - require ownership & classification tags",
+    "policyType": "Custom",
+    "mode": "Indexed",
+    "description": "Requires governance tags (agentOwner, agentPurpose, dataClassification, expiresOn) on resource groups and AI resources so every agent and its supporting resources can be traced to an owner, purpose, data class, and review date. Implements the CAF 'inventory and govern agents' recommendation. Use the 'modify' effect to add a default where missing.",
+    "metadata": {
+      "category": "AI agent governance",
+      "version": "1.0.0"
+    },
+    "parameters": {
+      "requiredTagNames": {
+        "type": "Array",
+        "metadata": {
+          "displayName": "Required tag names"
+        },
+        "defaultValue": ["agentOwner", "agentPurpose", "dataClassification", "expiresOn"]
+      },
+      "effect": {
+        "type": "String",
+        "allowedValues": ["Deny", "Audit", "Disabled"],
+        "defaultValue": "Deny",
+        "metadata": { "displayName": "Effect" }
+      }
+    },
+    "policyRule": {
+      "if": {
+        "allOf": [
+          {
+            "field": "type",
+            "in": [
+              "Microsoft.Resources/subscriptions/resourceGroups",
+              "Microsoft.CognitiveServices/accounts",
+              "Microsoft.Search/searchServices",
+              "Microsoft.MachineLearningServices/workspaces",
+              "Microsoft.ApiManagement/service",
+              "Microsoft.Web/sites",
+              "Microsoft.App/containerApps"
+            ]
+          },
+          {
+            "count": {
+              "value": "[parameters('requiredTagNames')]",
+              "name": "tagName",
+              "where": {
+                "value": "[empty(field(concat('tags[', current('tagName'), ']')))]",
+                "equals": true
+              }
+            },
+            "greater": 0
+          }
+        ]
+      },
+      "then": {
+        "effect": "[parameters('effect')]"
+      }
+    }
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "properties": {
+    "displayName": "AI agent platform - deny public network access on AI and supporting resources",
+    "policyType": "Custom",
+    "mode": "Indexed",
+    "description": "Denies creation/update of Cognitive Services (incl. Azure OpenAI), AI Search, ML / AI Foundry workspaces, Key Vault, and Storage accounts that allow public network access. Forces private endpoints, per the CAF AI landing zone network-isolation guidance.",
+    "metadata": {
+      "category": "AI agent governance",
+      "version": "1.0.0"
+    },
+    "parameters": {
+      "effect": {
+        "type": "String",
+        "allowedValues": ["Deny", "Audit", "Disabled"],
+        "defaultValue": "Deny",
+        "metadata": { "displayName": "Effect" }
+      }
+    },
+    "policyRule": {
+      "if": {
+        "anyOf": [
+          {
+            "allOf": [
+              { "field": "type", "in": [
+                "Microsoft.CognitiveServices/accounts",
+                "Microsoft.MachineLearningServices/workspaces"
+              ] },
+              { "field": "Microsoft.CognitiveServices/accounts/publicNetworkAccess", "notEquals": "Disabled" }
+            ]
+          },
+          {
+            "allOf": [
+              { "field": "type", "equals": "Microsoft.Search/searchServices" },
+              { "field": "Microsoft.Search/searchServices/publicNetworkAccess", "notEquals": "disabled" }
+            ]
+          },
+          {
+            "allOf": [
+              { "field": "type", "equals": "Microsoft.KeyVault/vaults" },
+              { "field": "Microsoft.KeyVault/vaults/publicNetworkAccess", "notEquals": "Disabled" }
+            ]
+          },
+          {
+            "allOf": [
+              { "field": "type", "equals": "Microsoft.Storage/storageAccounts" },
+              { "field": "Microsoft.Storage/storageAccounts/publicNetworkAccess", "notEquals": "Disabled" }
+            ]
+          }
+        ]
+      },
+      "then": {
+        "effect": "[parameters('effect')]"
+      }
+    }
+  }
+}

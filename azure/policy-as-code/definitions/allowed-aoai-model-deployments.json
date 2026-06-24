@@ -1,0 +1,45 @@
+{
+  "properties": {
+    "displayName": "AI agent platform - allow only approved model deployments",
+    "policyType": "Custom",
+    "mode": "All",
+    "description": "Denies Azure OpenAI / Azure AI Foundry model deployments whose model name is not on the approved list. Implements the CAF recommendation to allow only governed/approved models for agents.",
+    "metadata": {
+      "category": "AI agent governance",
+      "version": "1.0.0"
+    },
+    "parameters": {
+      "allowedModelNames": {
+        "type": "Array",
+        "metadata": {
+          "displayName": "Allowed model names",
+          "description": "List of approved model names, e.g. gpt-4o, gpt-4o-mini, o3-mini, text-embedding-3-large."
+        },
+        "defaultValue": ["gpt-4o", "gpt-4o-mini", "text-embedding-3-large"]
+      },
+      "effect": {
+        "type": "String",
+        "allowedValues": ["Deny", "Audit", "Disabled"],
+        "defaultValue": "Deny",
+        "metadata": { "displayName": "Effect" }
+      }
+    },
+    "policyRule": {
+      "if": {
+        "allOf": [
+          {
+            "field": "type",
+            "equals": "Microsoft.CognitiveServices/accounts/deployments"
+          },
+          {
+            "field": "Microsoft.CognitiveServices/accounts/deployments/model.name",
+            "notIn": "[parameters('allowedModelNames')]"
+          }
+        ]
+      },
+      "then": {
+        "effect": "[parameters('effect')]"
+      }
+    }
+  }
+}

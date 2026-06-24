@@ -1,0 +1,100 @@
+{
+  "properties": {
+    "displayName": "AI agent platform - stream AI resource diagnostics to central Log Analytics",
+    "policyType": "Custom",
+    "mode": "Indexed",
+    "description": "Ensures Cognitive Services / Azure OpenAI accounts send all logs and metrics to the central Log Analytics workspace via a diagnostic setting (deployIfNotExists). Provides the traceability/observability the CAF AI-agent guidance requires. Companion assignments cover AI Search, ML workspaces, and API Management with the same pattern.",
+    "metadata": {
+      "category": "AI agent governance",
+      "version": "1.0.0"
+    },
+    "parameters": {
+      "logAnalyticsWorkspaceId": {
+        "type": "String",
+        "metadata": {
+          "displayName": "Central Log Analytics workspace resource ID",
+          "strongType": "Microsoft.OperationalInsights/workspaces"
+        }
+      },
+      "diagnosticSettingName": {
+        "type": "String",
+        "defaultValue": "to-central-law",
+        "metadata": { "displayName": "Diagnostic setting name" }
+      },
+      "effect": {
+        "type": "String",
+        "allowedValues": ["DeployIfNotExists", "AuditIfNotExists", "Disabled"],
+        "defaultValue": "DeployIfNotExists",
+        "metadata": { "displayName": "Effect" }
+      }
+    },
+    "policyRule": {
+      "if": {
+        "field": "type",
+        "equals": "Microsoft.CognitiveServices/accounts"
+      },
+      "then": {
+        "effect": "[parameters('effect')]",
+        "details": {
+          "type": "Microsoft.Insights/diagnosticSettings",
+          "name": "[parameters('diagnosticSettingName')]",
+          "roleDefinitionIds": [
+            "/providers/Microsoft.Authorization/roleDefinitions/749f88d5-cbae-40b8-bcfc-e573ddc772fa",
+            "/providers/Microsoft.Authorization/roleDefinitions/92aaf0da-9dab-42b6-94a3-d43ce8d16293"
+          ],
+          "existenceCondition": {
+            "allOf": [
+              {
+                "field": "Microsoft.Insights/diagnosticSettings/workspaceId",
+                "equals": "[parameters('logAnalyticsWorkspaceId')]"
+              },
+              {
+                "field": "Microsoft.Insights/diagnosticSettings/logs.enabled",
+                "equals": "true"
+              }
+            ]
+          },
+          "deployment": {
+            "properties": {
+              "mode": "incremental",
+              "parameters": {
+                "resourceName": { "value": "[field('name')]" },
+                "logAnalyticsWorkspaceId": { "value": "[parameters('logAnalyticsWorkspaceId')]" },
+                "diagnosticSettingName": { "value": "[parameters('diagnosticSettingName')]" },
+                "location": { "value": "[field('location')]" }
+              },
+              "template": {
+                "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                "contentVersion": "1.0.0.0",
+                "parameters": {
+                  "resourceName": { "type": "string" },
+                  "logAnalyticsWorkspaceId": { "type": "string" },
+                  "diagnosticSettingName": { "type": "string" },
+                  "location": { "type": "string" }
+                },
+                "resources": [
+                  {
+                    "type": "Microsoft.CognitiveServices/accounts/providers/diagnosticSettings",
+                    "apiVersion": "2021-05-01-preview",
+                    "name": "[concat(parameters('resourceName'), '/Microsoft.Insights/', parameters('diagnosticSettingName'))]",
+                    "location": "[parameters('location')]",
+                    "properties": {
+                      "workspaceId": "[parameters('logAnalyticsWorkspaceId')]",
+                      "logs": [
+                        { "categoryGroup": "allLogs", "enabled": true },
+                        { "categoryGroup": "audit", "enabled": true }
+                      ],
+                      "metrics": [
+                        { "category": "AllMetrics", "enabled": true }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

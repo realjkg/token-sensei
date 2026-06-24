@@ -1,0 +1,147 @@
+openapi: 3.0.3
+info:
+  title: Claims API
+  version: "1.0.0"
+  description: >-
+    Bespoke claims API for first-notice-of-loss, triage and status, fronted by
+    Azure API Management and surfaced to Power Platform / Copilot Studio as a
+    governed custom connector. Auth is a Microsoft Entra ID bearer token (the
+    calling agent's managed identity / Entra Agent ID), validated by APIM.
+servers:
+  - url: https://apim-insurance-app.azure-api.net/claims
+security:
+  - entraId: []
+paths:
+  /claims:
+    post:
+      operationId: SubmitFirstNoticeOfLoss
+      summary: Submit a first notice of loss (FNOL)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FnolRequest" }
+      responses:
+        "201":
+          description: Claim created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Claim" }
+    get:
+      operationId: ListClaims
+      summary: List claims
+      parameters:
+        - name: policyId
+          in: query
+          schema: { type: string }
+        - name: state
+          in: query
+          schema: { type: string, enum: [open, triaging, in_review, approved, denied, paid, closed] }
+      responses:
+        "200":
+          description: A page of claims
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Claim" }
+  /claims/{claimId}:
+    get:
+      operationId: GetClaim
+      summary: Get a claim by id
+      parameters:
+        - name: claimId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: The claim
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Claim" }
+        "404": { description: Not found }
+  /claims/{claimId}/triage:
+    post:
+      operationId: TriageClaim
+      summary: Record a triage decision (severity, routing queue, fraud score)
+      parameters:
+        - name: claimId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TriageDecision" }
+      responses:
+        "200":
+          description: Triage recorded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Claim" }
+  /claims/{claimId}/payout:
+    post:
+      operationId: AuthorisePayout
+      summary: Authorise a payout — human confirmation required in Copilot Studio
+      parameters:
+        - name: claimId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount, currency]
+              properties:
+                amount: { type: number, format: double }
+                currency: { type: string, example: "USD" }
+                approverUpn: { type: string }
+      responses:
+        "200":
+          description: Payout authorised
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Claim" }
+components:
+  securitySchemes:
+    entraId:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: https://login.microsoftonline.com/common/oauth2/v2.0/token
+          scopes:
+            api://insurance-app-connectors/.default: Access the insurance connectors API
+  schemas:
+    FnolRequest:
+      type: object
+      required: [policyId, lossType, lossDate]
+      properties:
+        policyId: { type: string }
+        lossType: { type: string, example: "collision" }
+        lossDate: { type: string, format: date }
+        description: { type: string }
+        reportedByUpn: { type: string }
+    TriageDecision:
+      type: object
+      required: [severity, routingQueue]
+      properties:
+        severity: { type: string, enum: [low, medium, high, catastrophic] }
+        routingQueue: { type: string }
+        fraudScore: { type: number, format: double, minimum: 0, maximum: 1 }
+        notes: { type: string }
+    Claim:
+      type: object
+      properties:
+        claimId: { type: string }
+        policyId: { type: string }
+        state: { type: string, enum: [open, triaging, in_review, approved, denied, paid, closed] }
+        lossType: { type: string }
+        lossDate: { type: string, format: date }
+        reserveAmount: { type: number, format: double }
+        fraudScore: { type: number, format: double }
+        createdAt: { type: string, format: date-time }

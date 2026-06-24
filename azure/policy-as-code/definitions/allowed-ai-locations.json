@@ -1,0 +1,53 @@
+{
+  "properties": {
+    "displayName": "AI agent platform - allowed locations",
+    "policyType": "Custom",
+    "mode": "Indexed",
+    "description": "Restricts the regions in which AI agent platform resources (Cognitive Services / Azure OpenAI, AI Search, ML / AI Foundry workspaces, API Management, Key Vault, Storage) can be created. Aligns with the CAF guidance to constrain where agents and their data live.",
+    "metadata": {
+      "category": "AI agent governance",
+      "version": "1.0.0"
+    },
+    "parameters": {
+      "allowedLocations": {
+        "type": "Array",
+        "metadata": {
+          "displayName": "Allowed locations",
+          "description": "List of regions where AI agent platform resources may be deployed.",
+          "strongType": "location"
+        },
+        "defaultValue": ["eastus2", "swedencentral"]
+      },
+      "effect": {
+        "type": "String",
+        "allowedValues": ["Deny", "Audit", "Disabled"],
+        "defaultValue": "Deny",
+        "metadata": { "displayName": "Effect" }
+      }
+    },
+    "policyRule": {
+      "if": {
+        "allOf": [
+          {
+            "field": "type",
+            "in": [
+              "Microsoft.CognitiveServices/accounts",
+              "Microsoft.Search/searchServices",
+              "Microsoft.MachineLearningServices/workspaces",
+              "Microsoft.ApiManagement/service",
+              "Microsoft.KeyVault/vaults",
+              "Microsoft.Storage/storageAccounts"
+            ]
+          },
+          {
+            "field": "location",
+            "notIn": "[parameters('allowedLocations')]"
+          }
+        ]
+      },
+      "then": {
+        "effect": "[parameters('effect')]"
+      }
+    }
+  }
+}

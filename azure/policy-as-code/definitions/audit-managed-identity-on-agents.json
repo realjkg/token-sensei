@@ -1,0 +1,44 @@
+{
+  "properties": {
+    "displayName": "AI agent platform - agent-hosting resources must use a managed identity",
+    "policyType": "Custom",
+    "mode": "Indexed",
+    "description": "Audits resources that commonly host or invoke AI agents (Cognitive Services / OpenAI accounts, App Service & Functions, Container Apps, Azure ML online endpoints) that do not have a system- or user-assigned managed identity. Supports the CAF recommendation to prefer managed identities over secrets for agent identities.",
+    "metadata": {
+      "category": "AI agent governance",
+      "version": "1.0.0"
+    },
+    "parameters": {
+      "effect": {
+        "type": "String",
+        "allowedValues": ["Audit", "Deny", "Disabled"],
+        "defaultValue": "Audit",
+        "metadata": { "displayName": "Effect" }
+      }
+    },
+    "policyRule": {
+      "if": {
+        "allOf": [
+          {
+            "field": "type",
+            "in": [
+              "Microsoft.CognitiveServices/accounts",
+              "Microsoft.Web/sites",
+              "Microsoft.App/containerApps",
+              "Microsoft.MachineLearningServices/workspaces/onlineEndpoints"
+            ]
+          },
+          {
+            "anyOf": [
+              { "field": "identity.type", "exists": false },
+              { "field": "identity.type", "equals": "None" }
+            ]
+          }
+        ]
+      },
+      "then": {
+        "effect": "[parameters('effect')]"
+      }
+    }
+  }
+}

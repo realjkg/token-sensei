@@ -1,0 +1,10 @@
+extends: ["spectral:oas"]
+
+# Connector specs are intentionally small templates; relax the doc-completeness
+# rules so the lint focuses on structural correctness.
+rules:
+  oas3-api-servers: warn
+  operation-tag-defined: off
+  info-contact: off
+  info-license: off
+  oas3-unused-component: warn

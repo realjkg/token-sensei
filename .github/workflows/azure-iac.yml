@@ -1,0 +1,143 @@
+name: azure-iac
+
+# Lints and validates the Azure insurance-agent-platform IaC (azure/) on every PR.
+# Jobs:
+#   fmt      - terraform fmt -check across azure/
+#   tflint   - tflint static analysis per Terraform module
+#   validate - terraform init -backend=false + terraform validate per module
+#   policy   - structural lint of the Azure Policy definitions / initiative JSON
+
+on:
+  pull_request:
+    paths:
+      - "azure/**"
+      - ".github/workflows/azure-iac.yml"
+  push:
+    branches: [main]
+    paths:
+      - "azure/**"
+      - ".github/workflows/azure-iac.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  TERRAFORM_VERSION: "1.9.8"
+
+jobs:
+  fmt:
+    name: terraform fmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      - name: terraform fmt -check -recursive
+        run: terraform fmt -check -recursive -diff azure
+
+  tflint:
+    name: tflint (${{ matrix.module }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - azure/landing-zones/application-platform
+          - azure/policy-as-code/initiative
+          - azure/workloads/insurance-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: latest
+          # Authenticated GitHub API calls so resolving the tflint release and
+          # downloading the azurerm ruleset plugin don't hit the 60/hr anonymous
+          # rate limit (the cause of earlier CI failures).
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      # The .tflint.hcl (terraform + azurerm rulesets) lives at the repo root, so
+      # point at it explicitly — the job's working-directory is the module.
+      - name: tflint --init
+        run: tflint --init --config "${{ github.workspace }}/.tflint.hcl"
+        working-directory: ${{ matrix.module }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: tflint
+        run: tflint --format compact --config "${{ github.workspace }}/.tflint.hcl"
+        working-directory: ${{ matrix.module }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  validate:
+    name: terraform validate (${{ matrix.module }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - azure/landing-zones/application-platform
+          - azure/policy-as-code/initiative
+          - azure/workloads/insurance-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      - name: terraform init (no backend)
+        run: terraform init -backend=false -input=false
+        working-directory: ${{ matrix.module }}
+      - name: terraform validate
+        run: terraform validate -no-color
+        working-directory: ${{ matrix.module }}
+
+  policy:
+    name: azure policy json lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: validate JSON is well-formed
+        run: |
+          set -euo pipefail
+          fail=0
+          while IFS= read -r -d '' f; do
+            if jq empty "$f" >/dev/null 2>&1; then
+              echo "ok    $f"
+            else
+              echo "BAD   $f (invalid JSON)"; fail=1
+            fi
+          done < <(find azure/policy-as-code -name '*.json' -print0)
+          exit $fail
+      - name: validate policy definition structure
+        run: |
+          set -euo pipefail
+          fail=0
+          for f in azure/policy-as-code/definitions/*.json; do
+            # each definition must have properties.displayName, .policyRule and either .mode or be ARM-mode
+            missing=$(jq -r '
+              [ if (.properties|has("displayName")|not) then "properties.displayName" else empty end,
+                if (.properties|has("policyRule")|not)  then "properties.policyRule"  else empty end,
+                if (.properties|has("mode")|not)        then "properties.mode"        else empty end
+              ] | join(", ")' "$f")
+            if [ -n "$missing" ]; then
+              echo "BAD   $f missing: $missing"; fail=1
+            else
+              echo "ok    $f"
+            fi
+          done
+          # the initiative must reference at least one policy definition
+          init=azure/policy-as-code/initiative/ai-agent-governance-initiative.json
+          n=$(jq '.properties.policyDefinitions | length' "$init")
+          if [ "$n" -lt 1 ]; then echo "BAD   $init has no policyDefinitions"; fail=1; else echo "ok    $init ($n definitions)"; fi
+          exit $fail
+
+  openapi:
+    name: connector openapi lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: spectral lint OpenAPI specs
+        run: npx --yes @stoplight/spectral-cli@6 lint "azure/workloads/insurance-app/connectors/*.openapi.yaml"

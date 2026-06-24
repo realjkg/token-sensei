@@ -1,0 +1,147 @@
+{
+  "properties": {
+    "displayName": "AI agent governance (insurance agent platform)",
+    "policyType": "Custom",
+    "description": "Bundles the AI-agent governance guardrails from the CAF 'Govern and secure AI agents across your organization' guidance: constrained regions, approved models only, no public network access, no local auth on Cognitive Services, managed identity on agent hosts, diagnostics to central Log Analytics, and ownership/classification tagging. Assigned at the Application Platform management group.",
+    "metadata": {
+      "category": "AI agent governance",
+      "version": "1.0.0",
+      "note": "Reference spec. Replace the {managementGroupScope} token with /providers/Microsoft.Management/managementGroups/<your-app-platform-mg> before deploying via Azure CLI/Bicep, or use the authoritative Terraform in ./policy_assignments.tf which resolves the definition IDs automatically."
+    },
+    "parameters": {
+      "allowedLocations": {
+        "type": "Array",
+        "metadata": { "displayName": "Allowed locations for AI resources" },
+        "defaultValue": ["eastus2", "swedencentral"]
+      },
+      "allowedModelNames": {
+        "type": "Array",
+        "metadata": { "displayName": "Approved Azure OpenAI / AI Foundry model names" },
+        "defaultValue": ["gpt-4o", "gpt-4o-mini", "text-embedding-3-large"]
+      },
+      "requiredTagNames": {
+        "type": "Array",
+        "metadata": { "displayName": "Required governance tags" },
+        "defaultValue": ["agentOwner", "agentPurpose", "dataClassification", "expiresOn"]
+      },
+      "logAnalyticsWorkspaceId": {
+        "type": "String",
+        "metadata": {
+          "displayName": "Central Log Analytics workspace resource ID",
+          "strongType": "Microsoft.OperationalInsights/workspaces"
+        }
+      },
+      "locationEffect": {
+        "type": "String",
+        "allowedValues": ["Deny", "Audit", "Disabled"],
+        "defaultValue": "Deny",
+        "metadata": { "displayName": "Effect - allowed locations" }
+      },
+      "modelEffect": {
+        "type": "String",
+        "allowedValues": ["Deny", "Audit", "Disabled"],
+        "defaultValue": "Deny",
+        "metadata": { "displayName": "Effect - approved models" }
+      },
+      "publicNetworkEffect": {
+        "type": "String",
+        "allowedValues": ["Deny", "Audit", "Disabled"],
+        "defaultValue": "Deny",
+        "metadata": { "displayName": "Effect - deny public network access" }
+      },
+      "localAuthEffect": {
+        "type": "String",
+        "allowedValues": ["Deny", "Audit", "Disabled"],
+        "defaultValue": "Deny",
+        "metadata": { "displayName": "Effect - disable local auth" }
+      },
+      "managedIdentityEffect": {
+        "type": "String",
+        "allowedValues": ["Audit", "Deny", "Disabled"],
+        "defaultValue": "Audit",
+        "metadata": { "displayName": "Effect - managed identity on agent hosts" }
+      },
+      "diagnosticsEffect": {
+        "type": "String",
+        "allowedValues": ["DeployIfNotExists", "AuditIfNotExists", "Disabled"],
+        "defaultValue": "DeployIfNotExists",
+        "metadata": { "displayName": "Effect - diagnostic settings" }
+      },
+      "tagEffect": {
+        "type": "String",
+        "allowedValues": ["Deny", "Audit", "Disabled"],
+        "defaultValue": "Deny",
+        "metadata": { "displayName": "Effect - required tags" }
+      }
+    },
+    "policyDefinitionGroups": [
+      { "name": "identity", "displayName": "Agent identity & access" },
+      { "name": "network", "displayName": "Network isolation" },
+      { "name": "model", "displayName": "Approved models & regions" },
+      { "name": "observability", "displayName": "Traceability & observability" },
+      { "name": "inventory", "displayName": "Inventory & ownership" }
+    ],
+    "policyDefinitions": [
+      {
+        "policyDefinitionReferenceId": "allowedAiLocations",
+        "policyDefinitionId": "{managementGroupScope}/providers/Microsoft.Authorization/policyDefinitions/aiagent-allowed-locations",
+        "groupNames": ["model"],
+        "parameters": {
+          "allowedLocations": { "value": "[parameters('allowedLocations')]" },
+          "effect": { "value": "[parameters('locationEffect')]" }
+        }
+      },
+      {
+        "policyDefinitionReferenceId": "allowedAoaiModels",
+        "policyDefinitionId": "{managementGroupScope}/providers/Microsoft.Authorization/policyDefinitions/aiagent-allowed-aoai-models",
+        "groupNames": ["model"],
+        "parameters": {
+          "allowedModelNames": { "value": "[parameters('allowedModelNames')]" },
+          "effect": { "value": "[parameters('modelEffect')]" }
+        }
+      },
+      {
+        "policyDefinitionReferenceId": "denyAiPublicNetwork",
+        "policyDefinitionId": "{managementGroupScope}/providers/Microsoft.Authorization/policyDefinitions/aiagent-deny-public-network",
+        "groupNames": ["network"],
+        "parameters": {
+          "effect": { "value": "[parameters('publicNetworkEffect')]" }
+        }
+      },
+      {
+        "policyDefinitionReferenceId": "denyCognitiveLocalAuth",
+        "policyDefinitionId": "{managementGroupScope}/providers/Microsoft.Authorization/policyDefinitions/aiagent-deny-local-auth",
+        "groupNames": ["identity"],
+        "parameters": {
+          "effect": { "value": "[parameters('localAuthEffect')]" }
+        }
+      },
+      {
+        "policyDefinitionReferenceId": "auditManagedIdentityOnAgents",
+        "policyDefinitionId": "{managementGroupScope}/providers/Microsoft.Authorization/policyDefinitions/aiagent-audit-managed-identity",
+        "groupNames": ["identity"],
+        "parameters": {
+          "effect": { "value": "[parameters('managedIdentityEffect')]" }
+        }
+      },
+      {
+        "policyDefinitionReferenceId": "requireDiagnosticsAi",
+        "policyDefinitionId": "{managementGroupScope}/providers/Microsoft.Authorization/policyDefinitions/aiagent-require-diagnostics",
+        "groupNames": ["observability"],
+        "parameters": {
+          "logAnalyticsWorkspaceId": { "value": "[parameters('logAnalyticsWorkspaceId')]" },
+          "effect": { "value": "[parameters('diagnosticsEffect')]" }
+        }
+      },
+      {
+        "policyDefinitionReferenceId": "requireAgentTags",
+        "policyDefinitionId": "{managementGroupScope}/providers/Microsoft.Authorization/policyDefinitions/aiagent-require-tags",
+        "groupNames": ["inventory"],
+        "parameters": {
+          "requiredTagNames": { "value": "[parameters('requiredTagNames')]" },
+          "effect": { "value": "[parameters('tagEffect')]" }
+        }
+      }
+    ]
+  }
+}

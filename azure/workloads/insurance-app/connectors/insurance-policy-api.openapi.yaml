@@ -1,0 +1,108 @@
+openapi: 3.0.3
+info:
+  title: Insurance Policy API
+  version: "1.0.0"
+  description: >-
+    Bespoke insurance policy-administration API, fronted by Azure API Management
+    and surfaced to Power Platform / Copilot Studio as a governed custom
+    connector. Authentication is a Microsoft Entra ID bearer token (the calling
+    agent's managed identity / Entra Agent ID); APIM validates it. No API keys.
+servers:
+  - url: https://apim-insurance-app.azure-api.net/policy
+security:
+  - entraId: []
+paths:
+  /policies:
+    get:
+      operationId: ListPolicies
+      summary: List policies
+      parameters:
+        - name: customerId
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: string, enum: [active, lapsed, cancelled, quoted] }
+      responses:
+        "200":
+          description: A page of policies
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Policy" }
+    post:
+      operationId: CreateQuote
+      summary: Create a quote (draft policy)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/QuoteRequest" }
+      responses:
+        "201":
+          description: Quote created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Policy" }
+  /policies/{policyId}:
+    get:
+      operationId: GetPolicy
+      summary: Get a policy by id
+      parameters:
+        - name: policyId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: The policy
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Policy" }
+        "404": { description: Not found }
+  /policies/{policyId}:bind:
+    post:
+      operationId: BindPolicy
+      summary: Bind (issue) a quoted policy — human confirmation required in Copilot Studio
+      parameters:
+        - name: policyId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Policy bound
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Policy" }
+components:
+  securitySchemes:
+    entraId:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: https://login.microsoftonline.com/common/oauth2/v2.0/token
+          scopes:
+            api://insurance-app-connectors/.default: Access the insurance connectors API
+  schemas:
+    Policy:
+      type: object
+      properties:
+        policyId: { type: string }
+        customerId: { type: string }
+        product: { type: string, example: "auto" }
+        status: { type: string, enum: [active, lapsed, cancelled, quoted] }
+        premiumAnnual: { type: number, format: double }
+        effectiveDate: { type: string, format: date }
+        expiryDate: { type: string, format: date }
+    QuoteRequest:
+      type: object
+      required: [customerId, product]
+      properties:
+        customerId: { type: string }
+        product: { type: string }
+        coverageLevel: { type: string, enum: [basic, standard, premium] }
+        riskFactors:
+          type: object
+          additionalProperties: true

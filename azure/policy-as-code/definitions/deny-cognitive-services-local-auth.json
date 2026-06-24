@@ -1,0 +1,31 @@
+{
+  "properties": {
+    "displayName": "AI agent platform - disable local (key) auth on Cognitive Services / Azure OpenAI",
+    "policyType": "Custom",
+    "mode": "Indexed",
+    "description": "Denies Cognitive Services / Azure OpenAI accounts that allow local API-key authentication. Forces Microsoft Entra ID auth so every model/agent call is attributable to an agent identity (Entra Agent ID / managed identity), per the CAF AI-agent identity guidance.",
+    "metadata": {
+      "category": "AI agent governance",
+      "version": "1.0.0"
+    },
+    "parameters": {
+      "effect": {
+        "type": "String",
+        "allowedValues": ["Deny", "Audit", "Disabled"],
+        "defaultValue": "Deny",
+        "metadata": { "displayName": "Effect" }
+      }
+    },
+    "policyRule": {
+      "if": {
+        "allOf": [
+          { "field": "type", "equals": "Microsoft.CognitiveServices/accounts" },
+          { "field": "Microsoft.CognitiveServices/accounts/disableLocalAuth", "notEquals": true }
+        ]
+      },
+      "then": {
+        "effect": "[parameters('effect')]"
+      }
+    }
+  }
+}
