@@ -32,11 +32,14 @@
   <section id="loginCard" class="card">
     <h2>Sign In</h2>
     <label>Username</label>
-    <input id="username" value="owner" />
-    <label>Password</label>
-    <input id="password" type="password" value="owner123" />
+    <input id="username" />
+    <label>Role</label>
+    <select id="role">
+      <option value="admin">Admin</option>
+      <option value="viewer">Viewer</option>
+    </select>
     <button id="loginBtn">Login</button>
-    <p>Demo users: <code>owner/owner123</code> (admin), <code>viewer/viewer123</code> (viewer)</p>
+    <p>Demo-only client-side authentication (not for production security).</p>
   </section>
 
   <section id="app" class="hidden">
@@ -71,7 +74,8 @@
       <div class="card">
         <h2>Data & API Integration</h2>
         <label>API endpoint (optional JSON array: [{"team":"x","tokens":123}])</label>
-        <input id="apiUrl" placeholder="https://example.com/token-usage" />
+        <input id="apiUrl" placeholder="https://api.coingecko.com/api/v3/..." />
+        <p style="font-size:0.8rem;margin:0.25rem 0;">Allowed host: api.coingecko.com</p>
         <button id="syncApiBtn" class="secondary">Sync from API</button>
         <button id="exportBtn" class="secondary">Export JSON</button>
         <label>Import JSON</label>
@@ -94,11 +98,12 @@
   </section>
 
   <script>
-    const users = { owner: { password: 'owner123', role: 'admin' }, viewer: { password: 'viewer123', role: 'viewer' } };
+    const API_TIMEOUT_MS = 10000;
+    const allowedApiHosts = new Set(['api.coingecko.com']);
     const state = { user: null, totalTokens: 10000, tokenRate: 0.01, alertThreshold: 80, allocations: [], forecast: [] };
     const refs = {
       loginCard: document.getElementById('loginCard'), app: document.getElementById('app'),
-      username: document.getElementById('username'), password: document.getElementById('password'), authLabel: document.getElementById('authLabel'),
+      username: document.getElementById('username'), role: document.getElementById('role'), authLabel: document.getElementById('authLabel'),
       totalTokens: document.getElementById('totalTokens'), tokenRate: document.getElementById('tokenRate'), alertThreshold: document.getElementById('alertThreshold'),
       teamName: document.getElementById('teamName'), teamTokens: document.getElementById('teamTokens'), allocTable: document.getElementById('allocTable'),
       statusMessage: document.getElementById('statusMessage'), dailySpend: document.getElementById('dailySpend'), forecastDays: document.getElementById('forecastDays'),
@@ -108,6 +113,12 @@
     let pieChart, barChart, lineChart;
 
     const getUsed = () => state.allocations.reduce((sum, a) => sum + a.tokens, 0);
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+    function normalizeTeam(value) {
+      return String(value).slice(0, 80);
+    }
 
     function drawFlow() {
       const used = getUsed();
@@ -118,7 +129,7 @@
       const rows = state.allocations.map((a, i) => {
         const w = Math.max(24, a.tokens * unit);
         const color = `hsl(${(i * 65) % 360},70%,55%)`;
-        const row = `<rect x="150" y="${y}" width="${w}" height="24" fill="${color}" rx="4"/><text x="12" y="${y + 17}" font-size="12" fill="#e2e8f0">${a.team}</text><text x="${160 + w}" y="${y + 17}" font-size="12" fill="#e2e8f0">${a.tokens}</text><line x1="120" y1="${y + 12}" x2="150" y2="${y + 12}" stroke="#94a3b8"/>`;
+        const row = `<rect x="150" y="${y}" width="${w}" height="24" fill="${color}" rx="4"/><text x="12" y="${y + 17}" font-size="12" fill="#e2e8f0">${escapeHtml(a.team)}</text><text x="${160 + w}" y="${y + 17}" font-size="12" fill="#e2e8f0">${a.tokens}</text><line x1="120" y1="${y + 12}" x2="150" y2="${y + 12}" stroke="#94a3b8"/>`;
         y += 32;
         return row;
       }).join('');
@@ -135,7 +146,7 @@
       const used = getUsed();
       const remaining = Math.max(0, state.totalTokens - used);
       refs.allocTable.innerHTML = '<tr><th>Team</th><th>Tokens</th><th>Currency</th></tr>' +
-        state.allocations.map(a => `<tr><td>${a.team}</td><td>${a.tokens}</td><td>${(a.tokens * state.tokenRate).toFixed(2)}</td></tr>`).join('') +
+        state.allocations.map(a => `<tr><td>${escapeHtml(a.team)}</td><td>${a.tokens}</td><td>${(a.tokens * state.tokenRate).toFixed(2)}</td></tr>`).join('') +
         `<tr><th>Total Used</th><th>${used}</th><th>${(used * state.tokenRate).toFixed(2)}</th></tr><tr><th>Remaining</th><th>${remaining}</th><th>${(remaining * state.tokenRate).toFixed(2)}</th></tr>`;
     }
 
@@ -164,27 +175,32 @@
       renderStatus();
       drawFlow();
       renderCharts();
-      localStorage.setItem('token-budget-state', JSON.stringify({ ...state, user: undefined }));
+      const { user, ...stateToSave } = state;
+      localStorage.setItem('token-budget-state', JSON.stringify(stateToSave));
     }
 
     document.getElementById('loginBtn').onclick = () => {
-      const user = users[refs.username.value];
-      if (!user || user.password !== refs.password.value) return alert('Invalid credentials');
-      state.user = { name: refs.username.value, role: user.role };
+      const name = refs.username.value.trim();
+      if (!name) return alert('Enter a username');
+      state.user = { name, role: refs.role.value };
       refs.loginCard.classList.add('hidden');
       refs.app.classList.remove('hidden');
       refs.authLabel.textContent = `Logged in as ${state.user.name} (${state.user.role})`;
       const readonly = state.user.role !== 'admin';
-      ['addTeamBtn','saveBtn','importBtn','syncApiBtn'].forEach(id => document.getElementById(id).disabled = readonly && id !== 'syncApiBtn');
+      document.getElementById('addTeamBtn').disabled = readonly;
+      document.getElementById('saveBtn').disabled = readonly;
+      document.getElementById('importBtn').disabled = readonly;
+      document.getElementById('syncApiBtn').disabled = readonly;
       rerender();
     };
 
     document.getElementById('addTeamBtn').onclick = () => {
       if (!refs.teamName.value.trim()) return;
       const tokens = Number(refs.teamTokens.value || 0);
-      const existing = state.allocations.find(a => a.team === refs.teamName.value.trim());
+      const team = normalizeTeam(refs.teamName.value.trim());
+      const existing = state.allocations.find(a => a.team === team);
       if (existing) existing.tokens += tokens;
-      else state.allocations.push({ team: refs.teamName.value.trim(), tokens });
+      else state.allocations.push({ team, tokens });
       refs.teamName.value = '';
       rerender();
     };
@@ -195,7 +211,7 @@
       const days = Number(refs.forecastDays.value || 1);
       let remaining = Math.max(0, state.totalTokens - getUsed());
       state.forecast = Array.from({ length: days }, () => (remaining = Math.max(0, remaining - daily)));
-      const depletionDay = state.forecast.findIndex(v => v === 0);
+      const depletionDay = state.forecast.findIndex(v => v <= 0);
       refs.forecastSummary.textContent = depletionDay >= 0 ? `At this pace, budget reaches zero on day ${depletionDay + 1}.` : `Projected remaining after ${days} days: ${state.forecast.at(-1)} tokens.`;
       renderCharts();
     };
@@ -209,7 +225,7 @@
       a.href = URL.createObjectURL(blob);
       a.download = 'token-budget-plan.json';
       a.click();
-      URL.revokeObjectURL(a.href);
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     };
 
     document.getElementById('importBtn').onclick = () => {
@@ -218,12 +234,13 @@
         state.totalTokens = Number(data.totalTokens || state.totalTokens);
         state.tokenRate = Number(data.tokenRate || state.tokenRate);
         state.alertThreshold = Number(data.alertThreshold || state.alertThreshold);
-        state.allocations = Array.isArray(data.allocations) ? data.allocations.map(a => ({ team: String(a.team), tokens: Number(a.tokens || 0) })) : [];
+        state.allocations = Array.isArray(data.allocations) ? data.allocations.map(a => ({ team: normalizeTeam(a.team), tokens: Number(a.tokens || 0) })) : [];
         refs.totalTokens.value = state.totalTokens;
         refs.tokenRate.value = state.tokenRate;
         refs.alertThreshold.value = state.alertThreshold;
         rerender();
-      } catch {
+      } catch (err) {
+        console.error('Import failed', err);
         alert('Invalid JSON');
       }
     };
@@ -231,13 +248,23 @@
     document.getElementById('syncApiBtn').onclick = async () => {
       if (!refs.apiUrl.value.trim()) return;
       try {
-        const r = await fetch(refs.apiUrl.value.trim());
+        const parsedUrl = new URL(refs.apiUrl.value.trim());
+        if (!['http:', 'https:'].includes(parsedUrl.protocol)) throw new Error('Invalid protocol');
+        if (!allowedApiHosts.has(parsedUrl.hostname)) throw new Error('Host not allowed');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+        const r = await fetch(parsedUrl.toString(), { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const contentType = r.headers.get('content-type') || 'unknown';
+        if (!contentType.includes('application/json')) throw new Error(`Expected JSON response, got ${contentType}`);
         const data = await r.json();
         if (Array.isArray(data)) {
-          state.allocations = data.map(item => ({ team: String(item.team || 'Unknown'), tokens: Number(item.tokens || 0) }));
+          state.allocations = data.map(item => ({ team: normalizeTeam(item.team || 'Unknown'), tokens: Number(item.tokens || 0) }));
           rerender();
         }
-      } catch {
+      } catch (err) {
+        console.error('API sync failed', err);
         alert('API sync failed');
       }
     };
@@ -249,11 +276,13 @@
         state.totalTokens = Number(data.totalTokens || state.totalTokens);
         state.tokenRate = Number(data.tokenRate || state.tokenRate);
         state.alertThreshold = Number(data.alertThreshold || state.alertThreshold);
-        state.allocations = Array.isArray(data.allocations) ? data.allocations : [];
+        state.allocations = Array.isArray(data.allocations) ? data.allocations.map(a => ({ team: normalizeTeam(a.team), tokens: Number(a.tokens || 0) })) : [];
         refs.totalTokens.value = state.totalTokens;
         refs.tokenRate.value = state.tokenRate;
         refs.alertThreshold.value = state.alertThreshold;
-      } catch {}
+      } catch (err) {
+        console.error('Failed to load saved state', err);
+      }
     }
   </script>
 </body>

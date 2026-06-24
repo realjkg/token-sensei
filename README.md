@@ -1,6 +1,7 @@
 # Token-Based Budget Planning Estimator & Visualization Tool
 
 This repository now includes a lightweight token budget planning tool for teams and individual developers.
+Existing infrastructure folders (`azure/`, `gke/`) and prior platform assets remain available for deployment-oriented workflows.
 
 ## Project Overview
 The estimator supports token-first budgeting workflows and optional currency conversion, plus forecasting and visual dashboards for quick decision-making.
@@ -14,12 +15,12 @@ The estimator supports token-first budgeting workflows and optional currency con
 - **API Integration (Optional):** Pull allocation data from an external JSON endpoint.
 
 ## Quick Start
-1. Open `/home/runner/work/token-sensei/token-sensei/token-budget-estimator.html` in a browser.
-2. Sign in with:
-   - `owner / owner123` (admin)
-   - `viewer / viewer123` (viewer)
-3. Enter total tokens, add allocations, and run forecasting.
-4. Use **Export JSON** / **Import JSON** for data portability.
+1. From repository root, start a local server (for CDN/script compatibility), for example:
+   - `python -m http.server 8080`
+2. Open `http://localhost:8080/token-budget-estimator.html` in a browser.
+3. Sign in with any username and choose role (`admin` or `viewer`).
+4. Enter total tokens, add allocations, and run forecasting.
+5. Use **Export JSON** / **Import JSON** for data portability.
 
 ## Installation Notes
 If you want to host this tool via a backend stack:
