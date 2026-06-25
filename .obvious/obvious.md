@@ -39,6 +39,18 @@ See `.obvious/codebase-map.md`.
 
 1. For linting one file or directory, run `npx eslint <path>`.
 
+## Network Resilience Profile
+
+This is a client-side Vite/React app. All core computation runs locally over bundled seed data.
+
+| Surface | Network required? | Chaos monkey behaviour |
+|---|---|---|
+| Workload list, all detail tabs, forecast, KPI cards | No | Fully offline — pure local computation over seed data. |
+| Agent panel — **mock mode** (no `VITE_ANTHROPIC_API_KEY`) | No | Fully offline — `MockAgentClient` uses only in-memory calculations. |
+| Agent panel — **live mode** (`VITE_ANTHROPIC_API_KEY` set) | Yes (Anthropic API) | `sendMessage` in `useStore` wraps the call in `try/catch`. A network failure causes `fetch()` to throw; the catch block appends an inline `system` chat message (`Agent error: Failed to fetch`). No stack trace is exposed; the rest of the UI remains interactive. There is no automatic fallback to mock mode on live-mode failure — that is a known Phase 1 gap. |
+
+**Short answer:** mock mode (the default) is fully offline and safe under any network disruption. Live mode degrades gracefully to a chat error message, not a stack trace. The Phase 1 enhancement path is to auto-fallback to `MockAgentClient` when a `LiveAgentClient` call fails.
+
 ## Sandbox Snapshot
 
 - **Snapshot ID:** `icprr1z3f69clbt3lrls:default`
