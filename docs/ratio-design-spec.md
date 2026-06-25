@@ -1136,4 +1136,64 @@ Ratio is not a dashboard. It is a FinOps engine for AI — with a reference UI.
 
 ---
 
+## 16. Positioning & Integration Principle
+
+**Ratio is a complementary, open, embeddable value-and-governance layer — not a competing dashboard.** This is a product tenet, not a feature. It governs how Ratio relates to adjacent tooling and how its outputs reach people.
+
+### 16.1 Complement, Don't Replace (attribution tools)
+
+High-resolution cost-attribution tools — eBPF-based or packet-based taggers such as attribute.io — answer **what did it cost and who/what consumed it** at fine grain (process, pod, packet). That is the expensive, infrastructure-level *numerator*.
+
+Ratio does **not** do kernel-level capture and must never try to replace it. Ratio's job is the layer above:
+
+```
+Attribution tools (eBPF / packet tagging)   Ratio
+─────────────────────────────────────────   ─────────────────────────────────
+WHAT did it cost, and WHO/what consumed it → WAS it worth it (value ratio, R4)
+(numerator, high-resolution)                 SHOULD it scale (governance, R3)
+                                             WHERE is it heading (forecast)
+                                             HOW to shape demand (R2)
+```
+
+Ratio **consumes** attribution output as a cost source and attaches the value denominator, governance gates, forecast, and demand shaping. They answer "what did it cost"; Ratio answers "was it worth it, and should it grow." The two compose through one normalized cost interface — they do not compete.
+
+### 16.2 Publish, Don't Aggregate (the anti-"7 dashboards" rule)
+
+There are two ways to fight dashboard sprawl:
+
+- **(A) Consolidation surface** — one pane that pulls everything in. This is still a competing dashboard, just a larger one. **Rejected.**
+- **(B) Embeddable engine** — Ratio's value/governance/forecast outputs surface *inside the tools each persona already uses.* No new dashboard. **This is the design.**
+
+Ratio is API-first (§14): the UI is a reference implementation; the product is the math. Outputs are delivered, not centralized:
+
+- **Grafana** scrapes Ratio's `/metrics` (Prometheus) — value ratios and forecast accuracy appear on the analyst's existing board.
+- **Slack/Teams** slash command → `/agent/query` — managers ask "what's our riskiest workload?" in the channel they already use.
+- **`@ratio/react` SDK** (`useRatio`, `useForecast`, `useGates`) — the value lens renders inline in a team's existing FinOps/FOCUS tooling.
+- **Webhooks** (§14.3) push `forecast.breach` / `ratio.drop` / `gate.blocked` into whatever already alerts the owner.
+
+No one is asked to open a 7th dashboard; the value and governance numbers ride into the surface they already check.
+
+### 16.3 One Source of Truth, Persona-Projected
+
+Different personas need different lenses on the **same numbers**. One engine, persona-shaped projections (generalizing the `persona` parameter on `/agent/query`, §14.2):
+
+| Persona | Lens they need | Same underlying engine output |
+| --- | --- | --- |
+| Data analyst | granularity, trends, raw `/metrics` | value ratio + token attribution |
+| FOCUS billing specialist | FOCUS-normalized rows, reconciliation | `/ingest/focus` in, unit-cost math out |
+| Procurement / business manager | value ratios, forecast, governance status | `/portfolio/ratio`, `/forecast`, `/gates` |
+
+Nobody gets a divergent copy of the truth — they get the same engine output projected to their role and delivered to their tool.
+
+### 16.4 Two Ingest Doors, One Internal Model
+
+To stay open and composable, all external cost data enters through one normalized model (§2, §14.5) via two doors:
+
+1. **`/ingest/focus`** — FOCUS-formatted rows from any cloud or tool that exports the FinOps spec (see §14.5).
+2. **Attribution-source adapter** — a thin connector that maps an attribution tool's tagged cost output (e.g., attribute.io) into the same internal cost rows, ideally normalized to FOCUS so it rides the existing mapper. The attribution tool supplies high-resolution cost + workload identity; Ratio attaches value, governance, and forecast.
+
+The engine, forecasts, value ratios, and UI remain provider- and source-agnostic. Only the adapter (auth, fetch, identity resolution) is source-specific — see the connector pattern in §14.4.
+
+---
+
 *End of specification.*
