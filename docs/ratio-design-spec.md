@@ -726,7 +726,9 @@ Poor (<2×):       #ff5c72 (cost red)
 ## 11. Technical Stack (Recommended)
 
 ```
-Frontend:     React 18 + TypeScript + Next.js
+Front-end:    React 18 + TypeScript (pages + components)
+Back-end:     Node.js API routes (pages/api/*)
+Framework:    Next.js 14 (Pages Router) — unifies front-end + back-end in one app
 Styling:      Tailwind CSS (utility-first, matches design tokens)
 State:        React Context or Zustand (lightweight)
 Agent:        Anthropic Claude API (Sonnet) via fetch

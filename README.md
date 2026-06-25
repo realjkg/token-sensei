@@ -6,8 +6,11 @@ context, forecasts daily and monthly spend, compares model costs, enforces
 governance gates before scale, and answers cost questions through a data-grounded
 agent.
 
-This repository is **Phase 1**: a runnable, demo-ready React frontend driven by
-seed data, implementing the core acceptance criteria of the Ratio design spec.
+This repository is **Phase 1**: a runnable, demo-ready app — a **React front-end +
+Node.js back-end, unified in Next.js 14 (Pages Router)** — driven by seed data,
+implementing the core acceptance criteria of the Ratio design spec. The front-end is
+React pages and components; the back-end is Node.js API routes (`pages/api/*`) running
+in the same Next.js process.
 
 ## Quick start
 
@@ -22,11 +25,19 @@ npm run lint     # ESLint
 npm run typecheck # tsc --noEmit (also enforced in CI)
 ```
 
-No backend, no API keys, no auth are required to run the app.
+No external services, API keys, or auth are required to run the app — the Node.js
+back-end runs in-process as Next.js API routes.
 
 ## Stack
 
-- **React 18 + TypeScript + Next.js**
+**React front-end + Node.js back-end, unified in Next.js 14 (Pages Router).** The
+front-end is React 18 pages and components (`pages/`, `src/`); the back-end is Node.js
+API routes (`pages/api/*`) running in the same Next.js process — no separate server to
+deploy.
+
+- **React 18 + TypeScript** — front-end UI (pages + components)
+- **Node.js API routes** (`pages/api/*`) — back-end (e.g. `pages/api/hello.ts`)
+- **Next.js 14 (Pages Router)** — unifies front-end rendering and back-end routes
 - **Tailwind CSS** — design tokens from the spec (§10) wired as theme colors + CSS vars
 - **Zustand** — lightweight state (workloads, budgets, alerts, chat)
 - **JetBrains Mono** (data/numbers) + **Instrument Sans** (prose) via `@fontsource`
@@ -47,7 +58,16 @@ The eight core acceptance criteria (spec §13) all work against seed data:
 
 ### Architecture
 
+**Front-end (React) and back-end (Node.js) live in one Next.js app.** File-based
+routing under `pages/` serves the React front-end; `pages/api/*` are the Node.js
+back-end routes.
+
 ```
+pages/
+  index.tsx     Front-end: renders the 3-panel Ratio app (src/App.tsx)
+  hello.tsx     Front-end: /hello reference slice (src/hello/HelloPage)
+  api/
+    hello.ts    Back-end: Node.js API route returning a HelloMessage (source: 'live')
 src/
   types/        Data model (§2): Workload, ModelEntry, BudgetProfile, Alert, AgentQuery
   data/         Seed data: workloads, models, budgets, alerts
@@ -61,6 +81,14 @@ src/
     detail/     Center tabs: Budget, Multi-Model, Governance, Demand, Unit, Alerts + KPI cards
     agent/      Right panel: chat + quick prompts
 ```
+
+### The /hello reference flow
+
+`/hello` is the reference front-end → back-end path. The React page `pages/hello.tsx`
+renders `src/hello/HelloPage`, which talks to a typed `HelloClient` seam. The live
+client fetches the Node.js back-end route `pages/api/hello.ts` (`source: 'live'`); the
+mock client returns an in-memory greeting with no network. Same contract, swappable
+implementation — mirroring the agent seam below.
 
 ### The agent seam
 
