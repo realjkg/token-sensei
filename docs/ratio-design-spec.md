@@ -1196,4 +1196,175 @@ The engine, forecasts, value ratios, and UI remain provider- and source-agnostic
 
 ---
 
+## 17. Reference Architecture: Self-Hosted Observability (Prometheus + Grafana) under Zero-Trust SSO
+
+This section is the concrete deployment counterpart to §16. Where §16 states the *principle* — **publish, don't aggregate**; **one source of truth, persona-projected** — this section gives an engineer-actionable topology for the case where **the organization runs no COTS FinOps dashboard.** Ratio's value, cost, and governance signals are published as Prometheus metrics, surfaced through Grafana persona dashboards, and every access path is gated behind an SSO endpoint under zero-trust principles.
+
+> **Scope.** This is a reference architecture, not an implementation deliverable. The Prometheus exporter, recording/alerting rule packs, Grafana dashboard JSON, Helm values, and identity-aware-proxy configuration described here are **follow-on implementation waves** and are explicitly **out of scope** for this document. No exporter code, dashboards, charts, or proxy config ship with this spec — §17 defines the contract those waves implement.
+
+### 17.1 Zero-Trust Tenets (Applied)
+
+Ratio's observability plane assumes the four canonical zero-trust tenets, and every later subsection maps back to one of them:
+
+| Tenet | Meaning here | Where enforced |
+| --- | --- | --- |
+| **Never trust the network** | No service is reachable just because it is "inside." Prometheus and Alertmanager have no native auth, so they are never exposed directly. | §17.6 proxy, §17.7 NetworkPolicy |
+| **Verify explicitly** | Every request carries a verified identity (OIDC) and a verified peer certificate (mTLS). | §17.6 OIDC + mTLS |
+| **Least privilege** | IdP group → Ratio persona/role → scoped dashboards and label-scoped queries. | §17.5, §17.6 authz |
+| **Assume breach** | Short-lived tokens, no static creds, audit logging, fail-closed gateway, blast-radius limits. | §17.6, §17.8 |
+
+### 17.2 Component Topology + Data Flow
+
+The engine exposes an OpenMetrics `/metrics` endpoint. Prometheus scrapes it, evaluates recording rules (derived series) and alerting rules (tied to the §4 soft/hard/kill thresholds), and hands firing alerts to Alertmanager, which routes to the same Slack/email/webhook channels defined in §9. Grafana queries Prometheus over PromQL to render persona dashboards. **Every component sits behind the identity-aware proxy; nothing is exposed without a verified SSO identity.**
+
+```mermaid
+flowchart LR
+  subgraph Public["Public zone — untrusted"]
+    User["Persona browser<br/>analyst · billing · procurement · finance"]
+  end
+
+  subgraph Edge["Edge — zero-trust gateway (fail-closed)"]
+    Proxy["Identity-aware proxy<br/>oauth2-proxy / Pomerium"]
+    IdP["OIDC IdP (SSO)<br/>Okta · Entra ID · Keycloak"]
+  end
+
+  subgraph Mesh["Internal mesh — mTLS, least privilege"]
+    Grafana["Grafana<br/>native OIDC + RBAC"]
+    Prom["Prometheus<br/>(no native auth)"]
+    AM["Alertmanager<br/>(no native auth)"]
+    Ratio["Ratio engine<br/>/metrics exporter"]
+  end
+
+  subgraph Notify["Delivery — §9 channels"]
+    Slack["Slack"]
+    Email["Email"]
+    Hook["Webhook"]
+  end
+
+  User -->|HTTPS| Proxy
+  Proxy <-->|OIDC auth-code + PKCE| IdP
+  Proxy -->|authz: group→persona| Grafana
+  Proxy -->|authz| Prom
+  Proxy -->|authz| AM
+  Grafana -->|PromQL · mTLS| Prom
+  Prom -->|scrape /metrics · mTLS| Ratio
+  Prom -->|fire rules| AM
+  AM --> Slack & Email & Hook
+```
+
+**Trust boundaries.** (1) Public→Edge: TLS terminates at the proxy; no unauthenticated request proceeds. (2) Edge→Mesh: the proxy injects a verified identity header and opens an mTLS connection; Prometheus/Alertmanager are only ever reached *through* it. (3) Mesh-internal: scrapes and queries are mutually authenticated; the engine only accepts scrapes presenting Prometheus's client cert.
+
+### 17.3 Metric & Label Schema
+
+Metrics follow Prometheus naming conventions (snake_case, base-unit suffixes, `ratio_` namespace) and map directly onto the §2 data model. **Every cost series is published alongside its value-ratio series** — the §7.1 "never a number without its ratio" principle expressed in metrics: a dashboard or alert can never surface `ratio_spend_dollars` without `ratio_value_ratio` being queryable on the identical label set.
+
+Common label set on every series: `workload`, `model`, `team`, `provider`, `environment`, `tenant`.
+
+| Metric | Type | Extra labels | §2 source |
+| --- | --- | --- | --- |
+| `ratio_value_ratio` | gauge | — | `value.value_ratio` (R4) |
+| `ratio_total_value_dollars` | gauge | — | `value.total_value` |
+| `ratio_revenue_protected_dollars` | gauge | — | `value.revenue_protected` |
+| `ratio_cost_avoided_dollars` | gauge | — | `value.cost_avoided` |
+| `ratio_spend_dollars` | gauge | `period="daily\|monthly"` | `costs.daily_spend` / `monthly_spend` |
+| `ratio_budget_dollars` | gauge | `period="daily\|monthly"` | `costs.daily_budget` / `monthly_budget` |
+| `ratio_budget_consumed_ratio` | gauge | `period="daily\|monthly"` | `daily_spend / daily_budget` |
+| `ratio_burn_rate_dollars_per_hour` | gauge | — | derived run-rate (§6.1) |
+| `ratio_forecast_eom_dollars` | gauge | `method="weighted_avg_7d"` | `forecast.projected_eom` (§6.2) |
+| `ratio_forecast_days_until_breach` | gauge | — | `forecast.days_until_breach` (§6.4) |
+| `ratio_unit_cost_dollars` | gauge | `unit="call\|resolved\|user\|deflection"` | `unit_costs.*` (R1) |
+| `ratio_tokens_total` | counter | `direction="input\|output\|cached"` | `costs.tokens_*` |
+| `ratio_token_price_dollars_per_1m` | gauge | `direction="input\|output\|cached"` | `unit_costs.cost_per_1k_*` |
+| `ratio_resolution_rate` | gauge | — | `outputs.resolution_rate` |
+| `ratio_governance_gate_passed` | gauge (0/1) | `gate="policy\|ethics\|cost\|scale"` | `governance.*` (R3) |
+| `ratio_demand_shape_info` | gauge (=1) | `shape="always_on\|business_hours\|throttled\|batch_offpeak\|paused\|unmanaged"` | `demand_shape` (R2) |
+| `ratio_cost_trend_ratio` | gauge | — | `cost_trend_pct` |
+| `ratio_alert_active` | gauge (0/1) | `alert_type`, `severity` | §2.4 Alert |
+| `ratio_portfolio_value_ratio` | gauge | (no `workload` label) | `/portfolio/ratio` (§14.2) |
+
+`*_dollars` values are reported in whole currency units; `*_ratio` values are unitless (0–1 for consumed/rate fractions, ×-multiple for value ratio). Counters (`ratio_tokens_total`) are monotonic and read with `rate()`/`increase()`.
+
+### 17.4 Recording & Alerting Rules
+
+**Recording rules** precompute the derived/portfolio series so dashboards stay cheap and consistent with §14's engine math:
+
+| Recording rule | Expression (sketch) |
+| --- | --- |
+| `ratio:portfolio_value_ratio:sum` | `sum(ratio_total_value_dollars) / sum(ratio_spend_dollars{period="monthly"})` |
+| `ratio:value_per_dollar:ratio` | `ratio_total_value_dollars / ratio_spend_dollars{period="monthly"}` |
+| `ratio:budget_consumed:max_by_team` | `max by (team) (ratio_budget_consumed_ratio{period="daily"})` |
+
+**Alerting rules** bind directly to the §4 thresholds, so the metric plane and the in-app threshold system fire on the same boundaries:
+
+| Alert | Condition | Severity | §4 mapping |
+| --- | --- | --- | --- |
+| `RatioBudgetSoft` | `ratio_budget_consumed_ratio >= 0.70` | warning | soft (70%) |
+| `RatioBudgetHard` | `ratio_budget_consumed_ratio >= 0.90` | critical | hard (90%) |
+| `RatioBudgetKill` | `ratio_budget_consumed_ratio >= 1.00` | critical | kill (100%) |
+| `RatioForecastBreach` | `ratio_forecast_eom_dollars > ratio_budget_dollars{period="monthly"}` | warning | §4.4 forecast |
+| `RatioValueRatioDrop` | `ratio_value_ratio < 3` | warning | §4.3 value review |
+| `RatioValueRatioCritical` | `ratio_value_ratio < 2` | critical | §4.3 value critical |
+| `RatioGovernanceMissing` | `ratio_demand_shape_info{shape="always_on"} == 1 and on(workload) ratio_governance_gate_passed{gate="scale"} == 0` | critical | §5.3 enforcement |
+
+Alertmanager routes by `severity` and `team` labels to the §9 delivery channels (Slack webhook per team, email distribution list, custom webhook). The label-to-channel routing tree is the §9 contract expressed in `alertmanager.yml` — that file is an implementation-wave artifact.
+
+### 17.5 Grafana Persona Dashboards
+
+Grafana renders **the same underlying series projected per persona** — the §16.3 "one source of truth, persona-projected" tenet, realized as provisioned dashboards rather than one aggregated board. Each dashboard is a *lens* (different panels, default variables, and label scopes) over identical Prometheus data; no persona gets a divergent copy of the truth.
+
+| Persona | Default lens | Representative panels / queries |
+| --- | --- | --- |
+| **Data analyst** | granularity & trends | raw `ratio_*` time series, token attribution via `rate(ratio_tokens_total[5m])`, forecast-accuracy backtest |
+| **Billing specialist** | reconciliation | `ratio_spend_dollars` vs FOCUS-ingested cost, `ratio_token_price_dollars_per_1m`, per-provider unit costs |
+| **Procurement / business** | value & governance | `ratio_value_ratio`, `ratio_forecast_eom_dollars`, `ratio_governance_gate_passed` heatmap, demand-shape table |
+| **Finance / leadership** | portfolio | `ratio:portfolio_value_ratio:sum`, total value vs total spend, top/bottom workloads by ratio |
+
+Persona scoping is enforced two ways: Grafana RBAC + folder permissions decide *which* dashboards a role sees, and a templated `tenant`/`team` query variable (bound from the proxy's identity claim) decides *which series* render inside them.
+
+### 17.6 Zero-Trust SSO Access Layer
+
+**SSO endpoint.** OIDC is the primary SSO protocol (authorization-code + PKCE); SAML is supported as an alternative where the IdP standardizes on it. The IdP (Okta, Entra ID, Keycloak, …) is the single sign-on authority for all three backends.
+
+**Identity-aware proxy.** Because **Prometheus and Alertmanager ship no native authentication**, an identity-aware reverse proxy — **oauth2-proxy** or **Pomerium** — fronts them and terminates the OIDC session. **Grafana uses its own native OIDC integration** (and may additionally sit behind the proxy for defense in depth). The proxy is the policy enforcement point: it validates the session, maps **IdP group → Ratio persona/role**, and authorizes the request (via an external policy engine such as **OPA**, or the proxy's own authz/header rules) before forwarding.
+
+| Layer | Mechanism | Protects |
+| --- | --- | --- |
+| Authentication | OIDC (PKCE) / SAML at the IdP | who you are |
+| Session / edge authz | oauth2-proxy or Pomerium, fail-closed | which backend you may reach |
+| Fine-grained authz | IdP group → persona/role via OPA / proxy rules | which dashboards & label scopes |
+| Transport | mTLS between proxy↔backend and Prometheus↔engine (cert-manager / service mesh) | peer identity, no in-mesh sniffing |
+| Secrets / tokens | short-lived OIDC tokens, rotated scrape/datasource creds, no static passwords | replay & credential theft |
+| Audit | proxy + Grafana access logs shipped to the SIEM | breach detection, forensics |
+
+**mTLS.** Component-to-component traffic is mutually authenticated. Certificates are issued and rotated by **cert-manager** (Kubernetes) or a **service mesh** (Istio/Linkerd) sidecar; Prometheus presents a client cert the engine's `/metrics` endpoint requires, so an unauthenticated scrape is refused at the TLS layer.
+
+**SSO-down behavior (fail-closed).** If the IdP or proxy is unavailable, the gateway **fails closed**: no new authenticated sessions, and Grafana/Prometheus/Alertmanager are unreachable from the browser — the network-trust assumption is never relaxed to "let traffic through." What stays available is the *data plane*, by design: the Ratio engine keeps computing, Prometheus keeps scraping and evaluating rules over mTLS (an internal path that does not traverse the human-facing proxy), and **Alertmanager keeps routing to Slack/email/webhook** — so budget-breach and forecast alerts (§9) still reach owners even when interactive dashboards are dark. Existing proxy sessions expire at their short TTL rather than being honored indefinitely.
+
+### 17.7 Deployment Topology
+
+**Kubernetes (primary).** Install **kube-prometheus-stack** (Prometheus Operator + Prometheus + Alertmanager + Grafana) and **cert-manager** for mTLS issuance. The Ratio engine ships a `ServiceMonitor` so the Operator auto-discovers its `/metrics` target. The identity-aware proxy runs as **ingress auth** — either an `nginx` ingress `auth_request` to oauth2-proxy, or Pomerium as the ingress controller — so Grafana, Prometheus, and Alertmanager are only reachable through the authenticated edge. `NetworkPolicy` denies pod-to-pod traffic except the declared scrape/query paths.
+
+```text
+kube-prometheus-stack ── Prometheus ─┬─ scrapes Ratio /metrics (ServiceMonitor, mTLS)
+                        │             └─ recording + alerting rules (PrometheusRule)
+                        ├─ Alertmanager ── Slack / email / webhook (§9)
+                        └─ Grafana (native OIDC, provisioned persona dashboards)
+cert-manager ───────── issues/rotates mTLS certs for all of the above
+ingress (nginx auth_request → oauth2-proxy │ Pomerium) ── fail-closed SSO edge
+```
+
+**Docker Compose (alternative, smaller deployments).** A single-host stack — `prometheus`, `alertmanager`, `grafana`, `oauth2-proxy`, and the Ratio engine — wired on one Docker network, with the proxy as the only published port and TLS certs mounted from a local CA. Suitable for a pilot or single-team install; it trades the Operator's auto-discovery and HA for simplicity. Scrape targets and rules are static-file mounted rather than CRD-managed.
+
+### 17.8 Implementation & Security Considerations
+
+- **Label cardinality.** `workload × model × team × provider × environment (× tenant)` can explode series count, especially if `workload` or `model` churns. Mitigations: treat high-churn identifiers (raw request IDs, user IDs) as **never** labels; cap `model`/`workload` to registry-known values; pre-aggregate hot panels via recording rules (§17.4); set `sample_limit`/`target_limit` on scrape jobs; alert on `prometheus_tsdb_head_series` growth.
+- **Retention & downsampling.** Local TSDB retention sized to dashboard need (e.g. 15–30d); for long-horizon forecast-accuracy backtests, remote-write to **Thanos**/**Mimir**/**Cortex** with downsampling rather than inflating local retention.
+- **High availability.** Run redundant Prometheus replicas (Operator-managed) and clustered Alertmanager for gossip-deduplicated notifications; Thanos/Mimir provides a global query view and dedup across replicas.
+- **Secrets management.** OIDC client secrets, scrape mTLS certs, and Alertmanager webhook URLs live in a secrets manager (Kubernetes Secrets sealed via SOPS/Sealed-Secrets, or Vault), never in dashboards or rule files; rotate on the cert-manager schedule.
+- **Multi-tenancy.** The `tenant` label plus Grafana org/RBAC and proxy authz isolate tenants; for hard isolation use per-tenant Prometheus (or Mimir tenants) so one tenant cannot query another's series. The proxy injects the tenant claim; dashboards cannot widen their own scope.
+- **Composition with attribution tools (§16 FOCUS seam).** Attribution tools (eBPF/packet taggers such as attribute.io) own the **numerator** — *what it cost and who consumed it*, at high resolution. They feed their cost series (ideally FOCUS-normalized, §14.5) into the same plane; Ratio publishes the **denominator** — value, value ratio, forecast, governance — on matching `workload`/`team` labels. The two render **together in the same Grafana panel**: the attribution tool answers "what did it cost," the adjacent Ratio series answers "was it worth it, and should it scale." Ratio never performs kernel-level capture (§16.1); it attaches the value lens.
+- **Threat model summary (assume breach).** Each layer protects a distinct asset: the **proxy** stops unauthenticated/over-scoped access to auth-less Prometheus & Alertmanager; **OIDC + short-lived tokens** limit credential theft and replay; **mTLS** stops in-mesh sniffing and rogue scrapers; **OPA/RBAC** contains a valid-but-wrong identity to its persona's dashboards and label scope; **NetworkPolicy** limits lateral movement; **audit logs** make a breach detectable. The fail-closed gateway ensures an SSO outage degrades to *no human access*, never *open access*.
+
+---
+
 *End of specification.*
