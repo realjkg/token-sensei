@@ -14,6 +14,7 @@ See `.obvious/codebase-map.md`.
 - No backend, auth, database, Docker service, or required secret is needed for local development.
 - `VITE_ANTHROPIC_API_KEY` is optional. Without it, the app uses the data-grounded mock agent and remains fully runnable.
 - Keep app code changes scoped under `src/` unless build tooling or docs need updates. Do not commit generated `dist/` or `.obvious-install/` evidence files.
+- the design specs are point-in-time, session-based documents and should be kept as ephemeral artifacts in obvious.
 
 ## Local Verification
 
