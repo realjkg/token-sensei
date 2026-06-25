@@ -8,7 +8,7 @@ import type { AgentClient } from './AgentClient';
 export type { AgentClient, AgentContext, AgentReply } from './AgentClient';
 
 export function createAgentClient(): AgentClient {
-  const key = import.meta.env.VITE_ANTHROPIC_API_KEY;
+  const key = process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY;
   if (key && key.trim().length > 0) {
     return new LiveAgentClient(key);
   }

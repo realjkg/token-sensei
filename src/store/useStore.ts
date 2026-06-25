@@ -37,14 +37,18 @@ export interface Filters {
 }
 
 // Gate keys in their enforced order (spec §5.1).
-const GATE_ORDER: Array<keyof Workload['governance']> = [
+// Narrowly typed to the boolean governance fields only — excludes the string
+// fields (last_reviewed, approved_by) so indexed boolean assignment is safe.
+type GateKey = 'policy_check' | 'ethics_review' | 'cost_approval' | 'scale_authorized';
+
+const GATE_ORDER: GateKey[] = [
   'policy_check',
   'ethics_review',
   'cost_approval',
   'scale_authorized',
 ];
 
-const GATE_KEY: Record<GovernanceGateId, keyof Workload['governance']> = {
+const GATE_KEY: Record<GovernanceGateId, GateKey> = {
   policy: 'policy_check',
   ethics: 'ethics_review',
   cost: 'cost_approval',

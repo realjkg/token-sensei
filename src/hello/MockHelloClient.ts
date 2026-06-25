@@ -1,6 +1,5 @@
 // In-memory mock — no network. Returns a fixed greeting so the /hello route
 // works entirely offline, mirroring the MockAgentClient pattern.
-
 import type { HelloClient, HelloMessage } from './HelloClient';
 
 export class MockHelloClient implements HelloClient {
