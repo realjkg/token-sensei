@@ -1,7 +1,4 @@
 // Hello slice public API — mirrors src/agent/index.ts.
-// Consumers import the factory; concrete classes are not part of the public
-// contract so they can be swapped without touching call sites.
-
 import { LiveHelloClient } from './LiveHelloClient';
 import { MockHelloClient } from './MockHelloClient';
 import type { HelloClient } from './HelloClient';

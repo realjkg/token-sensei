@@ -1,7 +1,6 @@
-// Live client — fetches from the /api/hello Vite dev-server middleware. Mirrors
+// Live client — fetches from the Next.js /api/hello route. Mirrors
 // LiveAgentClient error handling: throws a typed Error so callers see a message,
 // never a raw fetch rejection or silent undefined.
-
 import type { HelloClient, HelloMessage } from './HelloClient';
 
 const HELLO_URL = '/api/hello';

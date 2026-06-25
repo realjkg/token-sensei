@@ -13,6 +13,13 @@ dist
 dist-ssr
 *.local
 
+# Next.js
+.next
+out
+
+# Obvious install artifacts
+.obvious-install
+
 # Editor
 .vscode/*
 !.vscode/extensions.json

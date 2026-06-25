@@ -1,6 +1,5 @@
 // Standalone /hello route — demonstrates the HelloClient seam with a mock/live
 // toggle. Isolated from the main 3-panel Ratio app; does not touch the store.
-
 import { useState, useCallback } from 'react';
 import { createHelloClient } from './index';
 import type { HelloMessage } from './index';
@@ -80,11 +79,14 @@ export function HelloPage() {
           {loadState.status === 'loading' ? 'Fetching…' : 'Get Greeting'}
         </button>
 
-        {/* Result */}
+        {/* Result — idle */}
         {loadState.status === 'idle' && (
-          <p className="text-center text-sm text-dim">Press the button to fetch a greeting.</p>
+          <p className="text-center text-sm text-dim">
+            Press the button to fetch a greeting.
+          </p>
         )}
 
+        {/* Result — success */}
         {loadState.status === 'success' && (
           <div className="space-y-3 rounded-card border border-edge bg-deep p-4">
             <p className="text-base text-txt">{loadState.data.message}</p>
@@ -103,6 +105,7 @@ export function HelloPage() {
           </div>
         )}
 
+        {/* Result — error */}
         {loadState.status === 'error' && (
           <div className="rounded-card border border-cost/40 bg-cost/10 p-4">
             <p className="text-sm font-medium text-cost">Error</p>
@@ -112,10 +115,7 @@ export function HelloPage() {
       </div>
 
       {/* Back link */}
-      <a
-        href="/"
-        className="mt-6 text-xs text-dim hover:text-sub"
-      >
+      <a href="/" className="mt-6 text-xs text-dim hover:text-sub">
         ← back to Ratio
       </a>
     </div>
