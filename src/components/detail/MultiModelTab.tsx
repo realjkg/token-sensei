@@ -1,0 +1,102 @@
+// Multi-Model Comparison tab — spec §3.4.2. What the same workload would cost on
+// every registry model at today's volume. Cheaper = green, pricier = red, with a
+// value-ratio framing note and an A/B-test caveat.
+
+import { useMemo } from 'react';
+import type { ModelEntry, Workload } from '@/types';
+import { compareModels, type ModelCostRow } from '@/lib/modelCompare';
+import { MODEL_QUALITY_NOTE } from '@/data/models';
+import { cheapestAlternative } from '@/lib/modelCompare';
+import { formatRatio, formatSignedPct, formatUSD } from '@/lib/format';
+
+export function MultiModelTab({
+  workload,
+  models,
+}: {
+  workload: Workload;
+  models: ModelEntry[];
+}) {
+  const volume = useMemo(() => {
+    const calls = workload.outputs.daily_inferences;
+    return {
+      calls,
+      avgInputTokens: Math.round(workload.costs.tokens_in_today / Math.max(calls, 1)),
+      avgOutputTokens: Math.round(workload.costs.tokens_out_today / Math.max(calls, 1)),
+    };
+  }, [workload]);
+
+  const rows = useMemo(
+    () => compareModels(models, workload.model, volume),
+    [models, workload.model, volume],
+  );
+  const alt = useMemo(() => cheapestAlternative(rows), [rows]);
+  const current = rows.find((r) => r.isCurrent);
+
+  return (
+    <div className="space-y-4">
+      <div className="text-xs text-sub">
+        Based on today's volume:{' '}
+        <span className="font-mono text-txt">{volume.calls.toLocaleString()} calls</span> · avg input{' '}
+        <span className="font-mono text-txt">{volume.avgInputTokens.toLocaleString()}</span> · avg output{' '}
+        <span className="font-mono text-txt">{volume.avgOutputTokens.toLocaleString()}</span> tokens
+      </div>
+
+      <div className="overflow-hidden rounded-card border border-edge">
+        <div className="grid grid-cols-[1.6fr_0.8fr_0.8fr_0.9fr_0.8fr] bg-raised px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-dim">
+          <span>Model</span>
+          <span className="text-right">Input</span>
+          <span className="text-right">Output</span>
+          <span className="text-right">Daily</span>
+          <span className="text-right">Save</span>
+        </div>
+        {rows.map((row) => (
+          <ModelRow key={row.model.id} row={row} />
+        ))}
+      </div>
+
+      {alt && current && (
+        <div className="rounded-card border border-shape/40 bg-shape/5 p-3 text-xs text-sub">
+          <span className="text-shape">⚠</span> Switching to{' '}
+          <span className="font-mono text-txt">{alt.model.display_name}</span> saves{' '}
+          <span className="font-mono text-value">
+            {formatUSD(current.dailyCost - alt.dailyCost)}/day
+          </span>{' '}
+          ({formatUSD((current.dailyCost - alt.dailyCost) * 30)}/mo). At the same value, that lifts
+          the {formatRatio(workload.value.value_ratio)} ratio higher.{' '}
+          {MODEL_QUALITY_NOTE[alt.model.model_name] ?? 'Quality may change.'} Run an A/B test on
+          resolution rate before switching.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ModelRow({ row }: { row: ModelCostRow }) {
+  const cheaper = row.savingsPct < 0;
+  const savingsColor = row.isCurrent
+    ? 'var(--sub)'
+    : cheaper
+      ? 'var(--value)'
+      : 'var(--cost)';
+  return (
+    <div
+      className={`grid grid-cols-[1.6fr_0.8fr_0.8fr_0.9fr_0.8fr] items-center border-b border-edge px-3 py-2 font-mono text-xs last:border-b-0 ${
+        row.isCurrent ? 'bg-unit/10' : ''
+      }`}
+    >
+      <span className="flex items-center gap-2 truncate text-txt">
+        {row.model.display_name}
+        {row.isCurrent && (
+          <span className="rounded bg-unit/20 px-1 text-[9px] uppercase text-unit">current</span>
+        )}
+      </span>
+      <span className="text-right text-sub">{formatUSD(row.inputCost)}</span>
+      <span className="text-right text-sub">{formatUSD(row.outputCost)}</span>
+      <span className="text-right text-txt">{formatUSD(row.dailyCost)}</span>
+      <span className="text-right font-bold" style={{ color: savingsColor }}>
+        {row.isCurrent ? 'base' : formatSignedPct(row.savingsPct)}
+      </span>
+    </div>
+  );
+}
+
