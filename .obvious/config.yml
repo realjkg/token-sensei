@@ -1,0 +1,30 @@
+branches:
+  defaultBase: main
+
+pr:
+  merge:
+    method: squash
+
+reviews:
+  botFeedback:
+    releaseBranchMaxRounds: 5
+
+ci:
+  generatedFileCommands: [] # TODO: Add generated-file commands if this repo introduces generated artifacts.
+
+preview:
+  primaryEnvironment: "" # TODO: Set when a staging/preview deployment exists.
+  environments: {}
+  deploy:
+    pollIntervalSeconds: 30
+    timeoutMinutes: 10
+
+qa:
+  guidePaths: []
+  automationPaths: []
+
+notifications:
+  slack:
+    mergeAnnouncements:
+      channelId: "" # TODO: Set if the repo has a Slack channel for merge announcements.
+      channelName: "" # TODO: Set if the repo has a Slack channel for merge announcements.
