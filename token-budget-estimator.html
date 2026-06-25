@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Token Budget Estimator</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root { color-scheme: light dark; font-family: Inter, system-ui, sans-serif; }
+    body { margin: 0; padding: 1rem; background: #0f172a; color: #e2e8f0; }
+    h1, h2 { margin: 0.5rem 0; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 1rem; }
+    label { display: block; font-size: 0.9rem; margin: 0.5rem 0 0.25rem; }
+    input, select, button, textarea { width: 100%; padding: 0.5rem; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: #e2e8f0; }
+    button { cursor: pointer; background: #2563eb; border: none; margin-top: 0.5rem; }
+    button.secondary { background: #475569; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    table { width: 100%; border-collapse: collapse; margin-top: 0.75rem; }
+    th, td { border-bottom: 1px solid #334155; padding: 0.4rem; text-align: left; }
+    .hidden { display: none; }
+    .alert { padding: 0.6rem; border-radius: 8px; margin: 0.5rem 0; }
+    .warn { background: #7c2d12; }
+    .ok { background: #14532d; }
+    #flow { width: 100%; min-height: 220px; }
+  </style>
+</head>
+<body>
+  <h1>Token-Based Budget Planning Estimator & Visualization Tool</h1>
+  <p>Plan token budgets, run what-if forecasting, and visualize usage with role-aware controls.</p>
+
+  <section id="loginCard" class="card">
+    <h2>Sign In</h2>
+    <label>Username</label>
+    <input id="username" />
+    <label>Role</label>
+    <select id="role">
+      <option value="admin">Admin</option>
+      <option value="viewer">Viewer</option>
+    </select>
+    <button id="loginBtn">Login</button>
+    <p>Demo-only client-side authentication (not for production security).</p>
+  </section>
+
+  <section id="app" class="hidden">
+    <div class="grid">
+      <div class="card">
+        <h2>Budget Inputs</h2>
+        <label>Total Tokens</label>
+        <input id="totalTokens" type="number" min="0" value="10000" />
+        <label>Currency per 1 Token (optional)</label>
+        <input id="tokenRate" type="number" min="0" step="0.0001" value="0.01" />
+        <label>Alert Threshold (%)</label>
+        <input id="alertThreshold" type="number" min="1" max="99" value="80" />
+        <label>Team / Category</label>
+        <input id="teamName" placeholder="Engineering" />
+        <label>Allocated Tokens</label>
+        <input id="teamTokens" type="number" min="0" value="1000" />
+        <button id="addTeamBtn">Add Allocation</button>
+        <button id="saveBtn" class="secondary">Save Plan</button>
+      </div>
+
+      <div class="card">
+        <h2>What-If Estimation</h2>
+        <label>Expected Spend Per Day (tokens)</label>
+        <input id="dailySpend" type="number" min="0" value="300" />
+        <label>Forecast Days</label>
+        <input id="forecastDays" type="number" min="1" value="14" />
+        <button id="runForecastBtn">Run Forecast</button>
+        <p id="forecastSummary"></p>
+        <div id="statusMessage" class="alert ok">Budget usage is within limits.</div>
+      </div>
+
+      <div class="card">
+        <h2>Data & API Integration</h2>
+        <label>API endpoint (optional JSON array: [{"team":"x","tokens":123}])</label>
+        <input id="apiUrl" placeholder="https://api.coingecko.com/api/v3/..." />
+        <p style="font-size:0.8rem;margin:0.25rem 0;">Allowed host: api.coingecko.com</p>
+        <button id="syncApiBtn" class="secondary">Sync from API</button>
+        <button id="exportBtn" class="secondary">Export JSON</button>
+        <label>Import JSON</label>
+        <textarea id="importJson" rows="6" placeholder='{"totalTokens":10000,"allocations":[]}'></textarea>
+        <button id="importBtn" class="secondary">Import</button>
+        <p id="authLabel"></p>
+      </div>
+    </div>
+
+    <div class="grid" style="margin-top: 1rem;">
+      <div class="card"><h2>Allocations</h2><table id="allocTable"></table></div>
+      <div class="card"><h2>Flow View</h2><svg id="flow"></svg></div>
+    </div>
+
+    <div class="grid" style="margin-top: 1rem;">
+      <div class="card"><canvas id="pieChart"></canvas></div>
+      <div class="card"><canvas id="barChart"></canvas></div>
+      <div class="card"><canvas id="lineChart"></canvas></div>
+    </div>
+  </section>
+
+  <script>
+    const API_TIMEOUT_MS = 10000;
+    const allowedApiHosts = new Set(['api.coingecko.com']);
+    const state = { user: null, totalTokens: 10000, tokenRate: 0.01, alertThreshold: 80, allocations: [], forecast: [] };
+    const refs = {
+      loginCard: document.getElementById('loginCard'), app: document.getElementById('app'),
+      username: document.getElementById('username'), role: document.getElementById('role'), authLabel: document.getElementById('authLabel'),
+      totalTokens: document.getElementById('totalTokens'), tokenRate: document.getElementById('tokenRate'), alertThreshold: document.getElementById('alertThreshold'),
+      teamName: document.getElementById('teamName'), teamTokens: document.getElementById('teamTokens'), allocTable: document.getElementById('allocTable'),
+      statusMessage: document.getElementById('statusMessage'), dailySpend: document.getElementById('dailySpend'), forecastDays: document.getElementById('forecastDays'),
+      forecastSummary: document.getElementById('forecastSummary'), importJson: document.getElementById('importJson'), apiUrl: document.getElementById('apiUrl'), flow: document.getElementById('flow')
+    };
+
+    let pieChart, barChart, lineChart;
+
+    const getUsed = () => state.allocations.reduce((sum, a) => sum + a.tokens, 0);
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+    function normalizeTeam(value) {
+      return String(value).slice(0, 80);
+    }
+
+    function drawFlow() {
+      const used = getUsed();
+      const width = refs.flow.clientWidth || 300;
+      refs.flow.setAttribute('viewBox', `0 0 ${width} 220`);
+      let y = 30;
+      const unit = used ? (width - 180) / used : 0;
+      const rows = state.allocations.map((a, i) => {
+        const w = Math.max(24, a.tokens * unit);
+        const color = `hsl(${(i * 65) % 360},70%,55%)`;
+        const row = `<rect x="150" y="${y}" width="${w}" height="24" fill="${color}" rx="4"/><text x="12" y="${y + 17}" font-size="12" fill="#e2e8f0">${escapeHtml(a.team)}</text><text x="${160 + w}" y="${y + 17}" font-size="12" fill="#e2e8f0">${a.tokens}</text><line x1="120" y1="${y + 12}" x2="150" y2="${y + 12}" stroke="#94a3b8"/>`;
+        y += 32;
+        return row;
+      }).join('');
+      refs.flow.innerHTML = `<rect x="20" y="8" width="90" height="28" rx="5" fill="#2563eb"/><text x="27" y="27" font-size="12" fill="#fff">Total ${state.totalTokens}</text>${rows}`;
+    }
+
+    function syncInputs() {
+      state.totalTokens = Number(refs.totalTokens.value || 0);
+      state.tokenRate = Number(refs.tokenRate.value || 0);
+      state.alertThreshold = Number(refs.alertThreshold.value || 80);
+    }
+
+    function renderTable() {
+      const used = getUsed();
+      const remaining = Math.max(0, state.totalTokens - used);
+      refs.allocTable.innerHTML = '<tr><th>Team</th><th>Tokens</th><th>Currency</th></tr>' +
+        state.allocations.map(a => `<tr><td>${escapeHtml(a.team)}</td><td>${a.tokens}</td><td>${(a.tokens * state.tokenRate).toFixed(2)}</td></tr>`).join('') +
+        `<tr><th>Total Used</th><th>${used}</th><th>${(used * state.tokenRate).toFixed(2)}</th></tr><tr><th>Remaining</th><th>${remaining}</th><th>${(remaining * state.tokenRate).toFixed(2)}</th></tr>`;
+    }
+
+    function renderStatus() {
+      const usedPct = state.totalTokens ? (getUsed() / state.totalTokens) * 100 : 0;
+      const near = usedPct >= state.alertThreshold;
+      refs.statusMessage.className = `alert ${near ? 'warn' : 'ok'}`;
+      refs.statusMessage.textContent = near ? `Alert: ${usedPct.toFixed(1)}% used (threshold ${state.alertThreshold}%)` : `Budget usage ${usedPct.toFixed(1)}% is within limits.`;
+    }
+
+    function renderCharts() {
+      const labels = state.allocations.map(a => a.team);
+      const values = state.allocations.map(a => a.tokens);
+      const colors = labels.map((_, i) => `hsl(${(i * 65) % 360},70%,55%)`);
+      const used = getUsed();
+      const remaining = Math.max(0, state.totalTokens - used);
+      pieChart?.destroy(); barChart?.destroy(); lineChart?.destroy();
+      pieChart = new Chart(document.getElementById('pieChart'), { type: 'pie', data: { labels, datasets: [{ data: values, backgroundColor: colors }] } });
+      barChart = new Chart(document.getElementById('barChart'), { type: 'bar', data: { labels: ['Used', 'Remaining'], datasets: [{ label: 'Tokens', data: [used, remaining], backgroundColor: ['#f59e0b', '#22c55e'] }] } });
+      lineChart = new Chart(document.getElementById('lineChart'), { type: 'line', data: { labels: state.forecast.map((_, i) => `D${i + 1}`), datasets: [{ label: 'Projected Remaining Tokens', data: state.forecast, borderColor: '#60a5fa' }] } });
+    }
+
+    function rerender() {
+      syncInputs();
+      renderTable();
+      renderStatus();
+      drawFlow();
+      renderCharts();
+      const { user, ...stateToSave } = state;
+      localStorage.setItem('token-budget-state', JSON.stringify(stateToSave));
+    }
+
+    document.getElementById('loginBtn').onclick = () => {
+      const name = refs.username.value.trim();
+      if (!name) return alert('Enter a username');
+      state.user = { name, role: refs.role.value };
+      refs.loginCard.classList.add('hidden');
+      refs.app.classList.remove('hidden');
+      refs.authLabel.textContent = `Logged in as ${state.user.name} (${state.user.role})`;
+      const readonly = state.user.role !== 'admin';
+      document.getElementById('addTeamBtn').disabled = readonly;
+      document.getElementById('saveBtn').disabled = readonly;
+      document.getElementById('importBtn').disabled = readonly;
+      document.getElementById('syncApiBtn').disabled = readonly;
+      rerender();
+    };
+
+    document.getElementById('addTeamBtn').onclick = () => {
+      if (!refs.teamName.value.trim()) return;
+      const tokens = Number(refs.teamTokens.value || 0);
+      const team = normalizeTeam(refs.teamName.value.trim());
+      const existing = state.allocations.find(a => a.team === team);
+      if (existing) existing.tokens += tokens;
+      else state.allocations.push({ team, tokens });
+      refs.teamName.value = '';
+      rerender();
+    };
+
+    document.getElementById('runForecastBtn').onclick = () => {
+      syncInputs();
+      const daily = Number(refs.dailySpend.value || 0);
+      const days = Number(refs.forecastDays.value || 1);
+      let remaining = Math.max(0, state.totalTokens - getUsed());
+      state.forecast = Array.from({ length: days }, () => (remaining = Math.max(0, remaining - daily)));
+      const depletionDay = state.forecast.findIndex(v => v <= 0);
+      refs.forecastSummary.textContent = depletionDay >= 0 ? `At this pace, budget reaches zero on day ${depletionDay + 1}.` : `Projected remaining after ${days} days: ${state.forecast.at(-1)} tokens.`;
+      renderCharts();
+    };
+
+    document.getElementById('saveBtn').onclick = rerender;
+
+    document.getElementById('exportBtn').onclick = () => {
+      const data = JSON.stringify({ totalTokens: state.totalTokens, tokenRate: state.tokenRate, alertThreshold: state.alertThreshold, allocations: state.allocations }, null, 2);
+      const blob = new Blob([data], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'token-budget-plan.json';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    };
+
+    document.getElementById('importBtn').onclick = () => {
+      try {
+        const data = JSON.parse(refs.importJson.value);
+        state.totalTokens = Number(data.totalTokens || state.totalTokens);
+        state.tokenRate = Number(data.tokenRate || state.tokenRate);
+        state.alertThreshold = Number(data.alertThreshold || state.alertThreshold);
+        state.allocations = Array.isArray(data.allocations) ? data.allocations.map(a => ({ team: normalizeTeam(a.team), tokens: Number(a.tokens || 0) })) : [];
+        refs.totalTokens.value = state.totalTokens;
+        refs.tokenRate.value = state.tokenRate;
+        refs.alertThreshold.value = state.alertThreshold;
+        rerender();
+      } catch (err) {
+        console.error('Import failed', err);
+        alert('Invalid JSON');
+      }
+    };
+
+    document.getElementById('syncApiBtn').onclick = async () => {
+      if (!refs.apiUrl.value.trim()) return;
+      try {
+        const parsedUrl = new URL(refs.apiUrl.value.trim());
+        if (!['http:', 'https:'].includes(parsedUrl.protocol)) throw new Error('Invalid protocol');
+        if (!allowedApiHosts.has(parsedUrl.hostname)) throw new Error('Host not allowed');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+        const r = await fetch(parsedUrl.toString(), { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const contentType = r.headers.get('content-type') || 'unknown';
+        if (!contentType.includes('application/json')) throw new Error(`Expected JSON response, got ${contentType}`);
+        const data = await r.json();
+        if (Array.isArray(data)) {
+          state.allocations = data.map(item => ({ team: normalizeTeam(item.team || 'Unknown'), tokens: Number(item.tokens || 0) }));
+          rerender();
+        }
+      } catch (err) {
+        console.error('API sync failed', err);
+        alert('API sync failed');
+      }
+    };
+
+    const saved = localStorage.getItem('token-budget-state');
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        state.totalTokens = Number(data.totalTokens || state.totalTokens);
+        state.tokenRate = Number(data.tokenRate || state.tokenRate);
+        state.alertThreshold = Number(data.alertThreshold || state.alertThreshold);
+        state.allocations = Array.isArray(data.allocations) ? data.allocations.map(a => ({ team: normalizeTeam(a.team), tokens: Number(a.tokens || 0) })) : [];
+        refs.totalTokens.value = state.totalTokens;
+        refs.tokenRate.value = state.tokenRate;
+        refs.alertThreshold.value = state.alertThreshold;
+      } catch (err) {
+        console.error('Failed to load saved state', err);
+      }
+    }
+  </script>
+</body>
+</html>
