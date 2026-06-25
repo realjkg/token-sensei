@@ -1,11 +1,11 @@
 ---
 name: local-dev
-description: Start and validate the local Ratio Vite frontend in the token-sensei repo.
+description: Start and validate the local Ratio Next.js frontend in the token-sensei repo.
 version: 1.0.0
 triggers:
   - local dev
   - start ratio
-  - vite dev server
+  - next dev server
   - token-sensei setup
 author: autobuild-setup-worker
 created: 2026-06-25
@@ -19,7 +19,7 @@ created: 2026-06-25
 - npm v10.8.2 was verified with `npm --version`.
 - Package manager: npm, selected from `package-lock.json`.
 - No Docker services, databases, queues, auth provider, or required backend are needed for Phase 1 local development.
-- Optional environment variable: `VITE_ANTHROPIC_API_KEY`. Leave it empty to use the default data-grounded mock agent.
+- Optional environment variable: `NEXT_PUBLIC_ANTHROPIC_API_KEY`. Leave it empty to use the default data-grounded mock agent.
 
 ## Install
 
@@ -39,10 +39,10 @@ Optional live-agent mode:
 
 ```bash
 cp .env.example .env.local
-# Then set VITE_ANTHROPIC_API_KEY if live Claude responses are needed.
+# Then set NEXT_PUBLIC_ANTHROPIC_API_KEY if live Claude responses are needed.
 ```
 
-If `VITE_ANTHROPIC_API_KEY` is unset, the app still works fully using `MockAgentClient`.
+If `NEXT_PUBLIC_ANTHROPIC_API_KEY` is unset, the app still works fully using `MockAgentClient`.
 
 ## Start Commands
 
@@ -52,13 +52,13 @@ Run from the repository root:
 npm run dev
 ```
 
-The setup run observed Vite serving on:
+The setup run observed Next.js serving on:
 
 ```text
-http://localhost:5173/
+http://localhost:3000/
 ```
 
-If port 5173 is busy, Vite may select another port. Use the URL printed by Vite stdout.
+If port 3000 is busy, Next.js may select another port. Use the URL printed by stdout.
 
 ## Primary Flow Verified
 
@@ -66,7 +66,7 @@ Verified on 2026-06-25 against commit `4e836816236ba784c76e39df2c116efe8685a867`
 
 1. Installed dependencies with `npm install`.
 2. Started the dev server with `npm run dev`.
-3. Opened `http://localhost:5173/`.
+3. Opened `http://localhost:3000/`.
 4. Confirmed the 3-panel Ratio UI loaded.
 5. Confirmed the left workload list rendered with value-ratio bars.
 6. Confirmed a workload detail view rendered with the Budget Profile tab, KPI cards, forecast/budget bar, and center detail panel.
@@ -86,7 +86,7 @@ Verified commands:
 ```bash
 npm run lint
 npm run build
-curl -s -o /dev/null -w "%{http_code}" http://localhost:5173/
+curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/
 ```
 
 Notes:

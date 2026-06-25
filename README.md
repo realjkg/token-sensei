@@ -13,11 +13,11 @@ seed data, implementing the core acceptance criteria of the Ratio design spec.
 
 ```bash
 npm install
-npm run dev      # serves the 3-panel Ratio UI on http://localhost:5173
+npm run dev      # serves the 3-panel Ratio UI on http://localhost:3000
 ```
 
 ```bash
-npm run build    # production build (Vite)
+npm run build    # production build (Next.js)
 npm run lint     # ESLint
 npm run typecheck # tsc --noEmit (also enforced in CI)
 ```
@@ -26,7 +26,7 @@ No backend, no API keys, no auth are required to run the app.
 
 ## Stack
 
-- **React 18 + TypeScript + Vite**
+- **React 18 + TypeScript + Next.js**
 - **Tailwind CSS** — design tokens from the spec (§10) wired as theme colors + CSS vars
 - **Zustand** — lightweight state (workloads, budgets, alerts, chat)
 - **JetBrains Mono** (data/numbers) + **Instrument Sans** (prose) via `@fontsource`
@@ -67,7 +67,7 @@ src/
 The agent is behind a clean `AgentClient` interface (`src/agent/`). With no key
 set, a **data-grounded `MockAgentClient`** computes real answers from the seed
 data — every cost cited with its value ratio (spec §7.1). Setting
-`VITE_ANTHROPIC_API_KEY` swaps in `LiveAgentClient`, which calls Claude with a
+`NEXT_PUBLIC_ANTHROPIC_API_KEY` swaps in `LiveAgentClient`, which calls Claude with a
 system prompt rebuilt from current workload state. **The app runs fully without a
 key.**
 
@@ -75,7 +75,7 @@ key.**
 
 These need live services or secrets and are out of Phase 1 scope:
 
-- Live Claude wiring is built but inactive until `VITE_ANTHROPIC_API_KEY` is set
+- Live Claude wiring is built but inactive until `NEXT_PUBLIC_ANTHROPIC_API_KEY` is set
 - The standalone REST API engine + webhooks (spec §14, acceptance items 9–10)
 - Slack/email report delivery (§9)
 - Cloud cost connectors — Azure / AWS (§12 Sprint 4)
