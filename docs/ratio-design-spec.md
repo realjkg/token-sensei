@@ -726,7 +726,7 @@ Poor (<2×):       #ff5c72 (cost red)
 ## 11. Technical Stack (Recommended)
 
 ```
-Frontend:     React 18 + TypeScript + Vite
+Frontend:     React 18 + TypeScript + Next.js
 Styling:      Tailwind CSS (utility-first, matches design tokens)
 State:        React Context or Zustand (lightweight)
 Agent:        Anthropic Claude API (Sonnet) via fetch
