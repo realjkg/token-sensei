@@ -1,0 +1,76 @@
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+@import '@fontsource/jetbrains-mono/700.css';
+@import '@fontsource/instrument-sans/400.css';
+@import '@fontsource/instrument-sans/500.css';
+@import '@fontsource/instrument-sans/600.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  /* Design tokens (spec §10.1) exposed as CSS vars for non-Tailwind use. */
+  --void: #05070b;
+  --deep: #090c12;
+  --slab: #0d1119;
+  --raised: #141a26;
+  --edge: #1a2235;
+  --txt: #d0d8ea;
+  --sub: #8895ad;
+  --dim: #4d5a72;
+  --value: #00e09e;
+  --cost: #ff5c72;
+  --shape: #ffc44d;
+  --gate: #7c8dff;
+  --unit: #00ccee;
+  --purple: #b490ff;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--void);
+  color: var(--txt);
+  font-family: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Thin, theme-matched scrollbars for the dense panels. */
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--edge);
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #243049;
+}
+
+@keyframes ticker {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-ticker {
+  animation: ticker 40s linear infinite;
+}
+.animate-ticker:hover {
+  animation-play-state: paused;
+}
+
