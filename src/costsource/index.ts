@@ -40,6 +40,28 @@ export { composeRatioView } from './normalize';
 // the engine and downstream views are unchanged regardless of which adapter
 // produced the rows.
 export { FocusFileAdapter } from './FocusFileAdapter';
+export {
+  PointFiveLiveAdapter,
+  mapOpportunityToFinding,
+  mapAnomalyToFinding,
+} from './PointFiveLiveAdapter';
+export type { PointFiveLiveAdapterDeps } from './PointFiveLiveAdapter';
+export {
+  POINTFIVE_LIVE_SOURCE_ID,
+  POINTFIVE_LIVE_FLAG_ENV,
+  DEFAULT_POINTFIVE_MCP_URL,
+  isPointFiveLiveEnabled,
+  resolvePointFiveStatus,
+  pointFiveLiveDescriptor,
+} from './pointfiveConfig';
+export type { PointFiveStatus, PointFiveCredentials } from './pointfiveConfig';
+export type {
+  PointFiveMcpClient,
+  PointFiveMcpClientFactory,
+  PointFiveOpportunity,
+  PointFiveAnomaly,
+  PointFiveFocusRow,
+} from './PointFiveMcpTransport';
 
 /** Returns MockCostSourceClient by default; pass `'live'` to get the live client. */
 export function createCostSourceClient(mode: 'mock' | 'live' = 'mock'): CostSourceClient {
