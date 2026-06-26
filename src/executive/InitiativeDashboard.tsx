@@ -10,6 +10,7 @@ import { usePersona } from '@/lib/persona';
 import { TechnicalViewToggle } from '@/components/TechnicalViewToggle';
 import { buildInitiativeBoard } from './initiativeModel';
 import { InitiativeCard } from './InitiativeCard';
+import { SnapshotButton } from './SnapshotButton';
 import { SpendSummaryBar } from './SpendSummaryBar';
 
 export function InitiativeDashboard() {
@@ -41,7 +42,10 @@ export function InitiativeDashboard() {
               Cloud spend, value, and approvals across the AI initiative portfolio.
             </p>
           </div>
-          <TechnicalViewToggle className="rounded-full border border-exec-border bg-exec-surface px-4 py-2 text-gate shadow-sm hover:bg-exec-bg" />
+          <div className="flex items-center gap-3">
+            <SnapshotButton />
+            <TechnicalViewToggle className="rounded-full border border-exec-border bg-exec-surface px-4 py-2 text-gate shadow-sm hover:bg-exec-bg" />
+          </div>
         </header>
 
         <SpendSummaryBar summary={summary} />
