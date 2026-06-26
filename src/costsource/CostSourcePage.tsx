@@ -12,7 +12,10 @@ import type {
   CostFinding,
   SourceHealth,
   CanonicalFocusRow,
+  FocusVersion,
 } from './index';
+import { FOCUS_VERSIONS } from './index';
+import { rawRowsForVersion } from './seed';
 import { formatUSD, formatRatio, formatPct } from '@/lib/format';
 import { ratioColor } from '@/lib/scales';
 
@@ -234,10 +237,129 @@ export function CostSourcePage() {
           </div>
         )}
 
+        {/* FOCUS-file ingest panel — only visible for focus_file kind sources.
+             Demonstrates the POST /api/costsource/ingest path: arbitrary FOCUS
+             rows at a user-chosen version flow through the FocusFileAdapter and
+             emerge as canonical v1.4 with Ratio value context attached. */}
+        {selected?.kind === 'focus_file' && (
+          <IngestFromFilePanel sourceId={sourceId} />
+        )}
+
         <a href="/" className="mt-8 block text-center text-xs text-dim hover:text-sub">
           ← back to Ratio
         </a>
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// IngestFromFilePanel — exercises the POST /api/costsource/ingest path
+// ---------------------------------------------------------------------------
+
+type IngestState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'error'; message: string }
+  | { status: 'success'; result: CostRowsResult };
+
+/**
+ * Lets the user pick a FOCUS version (v1.0–v1.4) and POST sample rows
+ * directly to the FocusFileAdapter ingest endpoint. Shows the backfill
+ * audit and canonical output — demonstrating the adapter works with
+ * arbitrary FOCUS exports, not just the mock seed.
+ */
+function IngestFromFilePanel({ sourceId }: { sourceId: string }) {
+  const [version, setVersion] = useState<FocusVersion>('1.0');
+  const [state, setState] = useState<IngestState>({ status: 'idle' });
+
+  const postSamplePayload = useCallback(async () => {
+    setState({ status: 'loading' });
+    const rows = rawRowsForVersion(version);
+    try {
+      const res = await fetch('/api/costsource/ingest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceId, version, rows }),
+      });
+      if (!res.ok) {
+        const { error } = (await res.json()) as { error: string };
+        setState({ status: 'error', message: error });
+        return;
+      }
+      const result = (await res.json()) as CostRowsResult;
+      setState({ status: 'success', result });
+    } catch (err) {
+      setState({
+        status: 'error',
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }, [sourceId, version]);
+
+  return (
+    <div className="mt-6 rounded-card border border-gate/40 bg-gate/5 p-4">
+      {/* Header */}
+      <div className="mb-3">
+        <p className="text-xs font-semibold uppercase tracking-wider text-gate">
+          FOCUS-file direct ingest (POST)
+        </p>
+        <p className="mt-1 text-xs text-sub">
+          POST sample rows at any FOCUS version to{' '}
+          <span className="font-mono text-txt">/api/costsource/ingest</span>. The
+          FocusFileAdapter upgrades them to v1.4 canonical and attaches Ratio value
+          context — the engine is unchanged. This is the second adapter proving
+          source-agnosticism.
+        </p>
+      </div>
+
+      {/* Version picker + trigger */}
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <span className="text-xs text-sub">FOCUS version:</span>
+        {FOCUS_VERSIONS.map((v) => (
+          <button
+            key={v}
+            onClick={() => {
+              setVersion(v);
+              setState({ status: 'idle' });
+            }}
+            className={[
+              'rounded border px-2 py-0.5 font-mono text-xs transition-colors',
+              version === v
+                ? 'border-gate bg-gate/20 text-gate'
+                : 'border-edge bg-raised text-sub hover:text-txt',
+            ].join(' ')}
+          >
+            v{v}
+          </button>
+        ))}
+        <button
+          onClick={postSamplePayload}
+          disabled={state.status === 'loading'}
+          className="ml-auto rounded-card bg-gate px-3 py-1 text-xs font-semibold text-void transition-opacity disabled:opacity-50"
+        >
+          {state.status === 'loading' ? 'Ingesting…' : `POST sample rows at v${version}`}
+        </button>
+      </div>
+
+      {/* Result */}
+      {state.status === 'error' && (
+        <p className="rounded-md border border-cost/40 bg-cost/10 px-3 py-2 text-xs text-cost">
+          {state.message}
+        </p>
+      )}
+      {state.status === 'success' && (
+        <div className="space-y-3">
+          <UpgradeAuditCard rows={state.result} />
+          <CompositionCard rows={state.result.rows} />
+          <FocusRowsCard rows={state.result.rows} />
+        </div>
+      )}
+      {state.status === 'idle' && (
+        <p className="text-xs text-dim">
+          Pick a version and POST to see the version shim backfill the additive columns.
+        </p>
+      )}
     </div>
   );
 }
