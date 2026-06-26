@@ -1,7 +1,9 @@
-// Standalone /mission route — the gamified Mission Board (Ratio v2, Layer 1).
-import { MissionBoard } from '@/mission/MissionBoard';
+// Standalone /mission route. Persona-aware (Ratio v2 Wave 2a): the executive
+// default renders the light Initiative Dashboard; the technical view renders the
+// original gamified Mission Board (Layer 1).
+import { MissionSurface } from '@/executive/MissionSurface';
 
 export default function Mission() {
-  return <MissionBoard />;
+  return <MissionSurface />;
 }
 
