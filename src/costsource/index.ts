@@ -35,6 +35,12 @@ export {
 export type { ComposedRatioView } from './normalize';
 export { composeRatioView } from './normalize';
 
+// Source adapters — exported so callers can use them directly or the seam
+// dispatches to them. Each adapter is source-specific (auth, fetch, identity);
+// the engine and downstream views are unchanged regardless of which adapter
+// produced the rows.
+export { FocusFileAdapter } from './FocusFileAdapter';
+
 /** Returns MockCostSourceClient by default; pass `'live'` to get the live client. */
 export function createCostSourceClient(mode: 'mock' | 'live' = 'mock'): CostSourceClient {
   return mode === 'live' ? new LiveCostSourceClient() : new MockCostSourceClient();
