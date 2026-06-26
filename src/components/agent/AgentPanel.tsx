@@ -1,3 +1,7 @@
+// TODO(wave3b): superseded by ChatPanel + the server-proxied AIClient seam
+// (src/ai, pages/api/v1/ai/chat.ts). Kept for backward compat during the UI
+// transition; remove once ChatPanel fully replaces this surface.
+//
 // Right panel — AI agent chat (spec §3.5). Quick prompts, scrollable message
 // history (user = body font, agent = mono with a left accent, system = green
 // mono), and a mono input. The responder is the data-grounded mock client by
