@@ -29,6 +29,7 @@ export function MissionCard({ mission, onOpen }: MissionCardProps) {
       type="button"
       onClick={onOpen}
       aria-label={`Open ${mission.name} mission detail — ${meta.label}, ${mission.fuelPct}% fuel, value ratio ${mission.valueRatio.toFixed(1)}x`}
+      data-mission-id={mission.id}
       className="flex w-full flex-col gap-4 rounded-2xl border border-edge bg-slab p-5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-gate"
       style={{ borderTop: `3px solid ${meta.color}` }}
       whileHover={reducedMotion ? undefined : { y: -4 }}
