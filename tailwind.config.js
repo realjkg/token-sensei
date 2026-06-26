@@ -25,6 +25,13 @@ module.exports = {
         aws: '#ff9900',
         azure: '#0078d4',
         gcp: '#4285f4',
+        // Executive light surface (Ratio v2 Wave 2). Token accents (value/cost/
+        // shape/gate/unit) are unchanged — they read on both backgrounds.
+        'exec-bg': '#f8fafc',
+        'exec-surface': '#ffffff',
+        'exec-border': '#e2e8f0',
+        'exec-text': '#0f172a',
+        'exec-muted': '#64748b',
       },
       fontFamily: {
         mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],

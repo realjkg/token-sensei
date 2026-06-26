@@ -1,0 +1,65 @@
+# .github/workflows/ci.yml
+#
+# CI pipeline for realjkg/token-sensei (Ratio v2)
+# Target wall-clock: ≤3 min.
+#
+# Optimization strategy:
+#   1. actions/setup-node cache:'npm'  → npm ci hits ~/.npm cache (saves ~55s)
+#   2. actions/cache .next/cache       → next build reuses SWC artifacts (saves ~35s)
+#   3. lint + typecheck + test in parallel → saves ~40s vs serial execution
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    name: Lint · Typecheck · Test · Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # cache: 'npm' stores ~/.npm between runs.
+      # On a cache hit, npm ci reads from local archive rather than the network.
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Key on lockfile hash + source hash so the cache busts when
+      # deps or source files change. Restore-keys allow partial hits.
+      - name: Restore Next.js build cache
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**/*.ts', 'src/**/*.tsx') }}
+          restore-keys: |
+            nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
+            nextjs-${{ runner.os }}-
+
+      # Run lint, typecheck, and test concurrently. All three are fully
+      # independent. Wall-clock is gated by the slowest leg (~40s typecheck).
+      # `wait` propagates any non-zero exit code so CI fails on any error.
+      - name: Lint · Typecheck · Test (parallel)
+        run: |
+          npm run lint      & PID_LINT=$!
+          npm run typecheck & PID_TYPE=$!
+          npm run test      & PID_TEST=$!
+          wait $PID_LINT && wait $PID_TYPE && wait $PID_TEST
+
+      # Build runs after validation so a type/lint failure short-circuits
+      # before the more expensive build step.
+      - name: Build
+        run: npm run build
+
