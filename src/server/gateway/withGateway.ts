@@ -11,7 +11,7 @@
 // Middleware order: method → size → auth → rate-limit → validate → dispatch.
 
 import type { NextApiHandler, NextApiRequest, NextApiResponse } from 'next';
-import { checkAuth, resolveGatewayAuth } from './auth';
+import { checkAuth, resolveGatewayAuth, type GatewayEnv } from './auth';
 import {
   SlidingWindowRateLimiter,
   type RateLimitResult,
@@ -51,7 +51,7 @@ export interface GatewayOptions {
   /** Override request logging (tests pass a no-op or a spy). */
   logger?: (entry: GatewayLogEntry) => void;
   /** Override the environment source (tests inject a fixture env). */
-  env?: NodeJS.ProcessEnv;
+  env?: GatewayEnv;
 }
 
 /** Consistent error envelope: { error: { code, message } }. Never a stack trace. */
@@ -177,4 +177,3 @@ export function withGateway(
     }
   };
 }
-

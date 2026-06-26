@@ -18,10 +18,16 @@ export type AuthOutcome =
   | { ok: true; tenant: string }
   | { ok: false; code: 'unauthorized'; message: string };
 
+export interface GatewayEnv {
+  NODE_ENV?: 'development' | 'production' | 'test';
+  RATIO_API_TOKEN?: string;
+  AI_PROVIDER?: string;
+}
+
 const LIVE_PROVIDERS = new Set(['claude', 'openai', 'openllm']);
 
 /** Decide whether to enforce Bearer auth from the server environment. */
-export function resolveGatewayAuth(env: NodeJS.ProcessEnv): GatewayAuthConfig {
+export function resolveGatewayAuth(env: GatewayEnv): GatewayAuthConfig {
   const token = env.RATIO_API_TOKEN?.trim() || null;
   const provider = (env.AI_PROVIDER ?? '').toLowerCase();
   const liveProvider = LIVE_PROVIDERS.has(provider);
@@ -76,4 +82,3 @@ export function checkAuth(
   }
   return { ok: true, tenant: tenantId(presented) };
 }
-
