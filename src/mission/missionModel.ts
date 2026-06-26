@@ -139,8 +139,10 @@ export function toMissionView(workload: Workload): MissionView {
   };
 }
 
-export function buildMissionBoard(): { missions: MissionView[]; fleet: FleetSummary } {
-  const missions = WORKLOADS.map(toMissionView);
+export function buildMissionBoard(
+  workloads: Workload[] = WORKLOADS,
+): { missions: MissionView[]; fleet: FleetSummary } {
+  const missions = workloads.map(toMissionView);
 
   // Fleet fuel = aggregate daily budget consumed across the fleet, matching the
   // per-mission daily fuel gauge.
@@ -148,7 +150,7 @@ export function buildMissionBoard(): { missions: MissionView[]; fleet: FleetSumm
   const totalDailyBudget = missions.reduce((sum, m) => sum + m.dailyBudget, 0);
   const fleetFuelRatio = totalDailyBudget > 0 ? totalSpentToday / totalDailyBudget : 0;
 
-  const portfolio = derivePortfolioRatio(WORKLOADS);
+  const portfolio = derivePortfolioRatio(workloads);
   const needsAttention = missions.filter((m) => m.status !== 'nominal').length;
 
   return {
