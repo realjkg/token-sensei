@@ -18,15 +18,21 @@ import { GovernanceTab } from '@/components/detail/GovernanceTab';
 import { DemandShapingTab } from '@/components/detail/DemandShapingTab';
 import { UnitCostsTab } from '@/components/detail/UnitCostsTab';
 import { AlertHistoryTab } from '@/components/detail/AlertHistoryTab';
+import { AdjustmentCards } from './AdjustmentCards';
+import { AccuracyLedgerSummary } from './AccuracyLedgerSummary';
 import { toMissionView, type MissionStatus } from './missionModel';
+
+// Mission Detail surfaces the six v1 sections plus the WS3 "Adjustments" capstone
+// (PR H). 'adjust' is not a v1 DetailTab — it is the new change-management surface.
+type MissionSectionId = DetailTab | 'adjust';
 
 // Mission sections map 1:1 onto the six v1 detail tabs (spec §3.4 → Workstream 1
 // mapping table). `tab` is the underlying v1 DetailTab id; `label` is the mission
 // re-labeling; `v1` names the capability it carries so the lineage is explicit.
 interface MissionSection {
-  tab: DetailTab;
+  tab: MissionSectionId;
   label: string;
-  v1: string;
+  v1?: string; // the v1 capability this section carries; undefined for new WS3 surfaces
 }
 
 const SECTIONS: MissionSection[] = [
@@ -36,6 +42,7 @@ const SECTIONS: MissionSection[] = [
   { tab: 'demand', label: 'Flight Plan', v1: 'Demand Shaping' },
   { tab: 'unit', label: 'Mission Economics', v1: 'Unit Costs' },
   { tab: 'alerts', label: 'Mission Log', v1: 'Alert History' },
+  { tab: 'adjust', label: 'Mission Adjustments' },
 ];
 
 const STATUS_META: Record<MissionStatus, { label: string; color: string }> = {
@@ -58,7 +65,7 @@ export function MissionDetail({ missionId, onBack }: MissionDetailProps) {
 
   // Each mission detail keeps its own open section, defaulting to Fuel &
   // Trajectory (the spec’s default drill-down section).
-  const [section, setSection] = useState<DetailTab>('budget');
+  const [section, setSection] = useState<MissionSectionId>('budget');
 
   // Ref for auto-focus on open (WCAG 2.4.3 — moving keyboard focus into the new
   // view so screen-reader users know the context changed).
@@ -210,7 +217,9 @@ export function MissionDetail({ missionId, onBack }: MissionDetailProps) {
           {/* Lineage caption — each mission section IS a full v1 capability. */}
           {activeSection && (
             <p className="font-mono text-[10px] uppercase tracking-wider text-dim">
-              {activeSection.label} · carries v1 {activeSection.v1}
+              {activeSection.v1
+                ? `${activeSection.label} · carries v1 ${activeSection.v1}`
+                : `${activeSection.label} · Ratio v2 change management (WS3)`}
             </p>
           )}
           <KpiCards workload={workload} />
@@ -222,6 +231,12 @@ export function MissionDetail({ missionId, onBack }: MissionDetailProps) {
           {section === 'demand' && <DemandShapingTab workload={workload} budget={budget} />}
           {section === 'unit' && <UnitCostsTab workload={workload} />}
           {section === 'alerts' && <AlertHistoryTab workloadId={workload.id} />}
+          {section === 'adjust' && (
+            <div className="space-y-5">
+              <AdjustmentCards workload={workload} />
+              <AccuracyLedgerSummary />
+            </div>
+          )}
         </section>
       </div>
     </div>
