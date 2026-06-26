@@ -17,6 +17,8 @@ import type { FocusVersion } from './focusVersions';
 import { isAtLeast } from './focusVersions';
 import type { FocusCoreV10, RawSourceRow } from './focusRows';
 import { pointFiveLiveDescriptor, resolvePointFiveStatus } from './pointfiveConfig';
+import { connectorDescriptor, resolveConnectorStatus } from './connectorConfig';
+import { FOCUS_EXPORT_CONNECTOR_SPECS } from './focusExportConnectors';
 
 const RESOURCE_PREFIX = 'arn:ratio:workload/';
 
@@ -65,6 +67,14 @@ export const COST_SOURCES: CostSourceDescriptor[] = [
   // flag + OAuth env so `configured` honestly reflects whether the dark adapter
   // has been switched on. Default build: flag OFF → configured:false (ships dark).
   pointFiveLiveDescriptor(resolvePointFiveStatus(process.env)),
+  // Cloud-connectors MVP: public cloud (Azure / AWS / GCP), Kubernetes, Nutanix.
+  // Each descriptor is computed from its feature flag + credential env via the
+  // generic resolver, so `configured` honestly reflects whether the dark
+  // connector has been switched on. Default build: every flag OFF → configured:
+  // false (all ship dark, no network calls).
+  ...FOCUS_EXPORT_CONNECTOR_SPECS.map((spec) =>
+    connectorDescriptor(spec, resolveConnectorStatus(spec, process.env)),
+  ),
 ];
 
 export function findSource(id: string): CostSourceDescriptor | undefined {

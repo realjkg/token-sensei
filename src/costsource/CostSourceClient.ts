@@ -18,7 +18,13 @@ export interface CostWindow {
   end: string; // ISO 8601, exclusive
 }
 
-export type SourceKind = 'pointfive' | 'focus_file' | 'mock';
+export type SourceKind =
+  | 'pointfive'
+  | 'focus_file'
+  | 'mock'
+  | 'cloud' // public-cloud FOCUS export (Azure / AWS / GCP)
+  | 'kubernetes' // OpenCost / Kubecost FOCUS export
+  | 'nutanix'; // Nutanix Cloud Manager cost governance export
 export type SourceCoverage = 'public_cloud' | 'private_cloud' | 'on_prem';
 export type SourceCapability = 'costRows' | 'findings';
 
