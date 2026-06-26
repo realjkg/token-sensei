@@ -1,4 +1,4 @@
-// Ratio data model — design spec §2.
+// Ratio data model — see `.obvious/obvious.md` Design Guidance (Data-Model Invariants).
 // Types are the contract between seed data, forecast math, and the UI.
 
 export type ModelProvider =

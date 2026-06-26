@@ -109,5 +109,8 @@ These need live services or secrets and are out of Phase 1 scope:
 - Cloud cost connectors — Azure / AWS (§12 Sprint 4)
 - Auth + team scoping (§11 Sprint 3+)
 
-See `docs/ratio-design-spec.md` for the full specification.
+Durable design rules live in `.obvious/obvious.md` (Design Guidance) and the
+routine skills under `.obvious/skills/`. The full v1 design specification is
+preserved as an ephemeral Obvious artifact (point-in-time snapshot), not checked
+into the repo — see the `doc-authoring` skill for this workflow.
 
