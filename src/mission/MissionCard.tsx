@@ -16,15 +16,20 @@ const STATUS_META: Record<MissionStatus, { label: string; color: string }> = {
 
 interface MissionCardProps {
   mission: MissionView;
+  // Tapping the card opens its Mission Detail (Layer 2 drill-down).
+  onOpen: () => void;
 }
 
-export function MissionCard({ mission }: MissionCardProps) {
+export function MissionCard({ mission, onOpen }: MissionCardProps) {
   const reducedMotion = useReducedMotion() ?? false;
   const meta = STATUS_META[mission.status];
 
   return (
-    <motion.article
-      className="flex flex-col gap-4 rounded-2xl border border-edge bg-slab p-5"
+    <motion.button
+      type="button"
+      onClick={onOpen}
+      aria-label={`Open ${mission.name} mission detail — ${meta.label}, ${mission.fuelPct}% fuel, value ratio ${mission.valueRatio.toFixed(1)}x`}
+      className="flex w-full flex-col gap-4 rounded-2xl border border-edge bg-slab p-5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-gate"
       style={{ borderTop: `3px solid ${meta.color}` }}
       whileHover={reducedMotion ? undefined : { y: -4 }}
       transition={{ type: 'spring', stiffness: 300, damping: 24 }}
@@ -72,7 +77,12 @@ export function MissionCard({ mission }: MissionCardProps) {
         </span>
         <span>{mission.trajectoryVerdict}</span>
       </p>
-    </motion.article>
+
+      {/* Drill-down affordance into Mission Detail (Layer 2) */}
+      <span aria-hidden className="font-mono text-[11px] font-semibold text-gate">
+        Open mission →
+      </span>
+    </motion.button>
   );
 }
 
