@@ -106,8 +106,28 @@ These need live services or secrets and are out of Phase 1 scope:
 - Live Claude wiring is built but inactive until `NEXT_PUBLIC_ANTHROPIC_API_KEY` is set
 - The standalone REST API engine + webhooks (spec §14, acceptance items 9–10)
 - Slack/email report delivery (§9)
-- Cloud cost connectors — Azure / AWS (§12 Sprint 4)
 - Auth + team scoping (§11 Sprint 3+)
+
+## Cloud cost connectors (ship dark)
+
+Native cost-source connectors for the public clouds and private infrastructure
+are wired into the cost-ingest seam (`src/costsource/`) and **ship dark**: each
+is config-gated behind a feature flag and is registered as `configured: false`
+(no network calls) until its flag and credentials are set. Like the PointFive
+live adapter, only the adapter (auth/fetch) is source-specific — every connector
+reuses the existing FOCUS v1.0–v1.4 → v1.4 normalization shim.
+
+| Connector | Source id | Coverage | Feature flag | Required env |
+|---|---|---|---|---|
+| Azure Cost Management | `azure-cost-management` | public_cloud | `COSTSOURCE_AZURE_LIVE` | `AZURE_FOCUS_EXPORT_URL`, `AZURE_FOCUS_SAS` |
+| AWS Data Exports | `aws-data-exports` | public_cloud | `COSTSOURCE_AWS_LIVE` | `AWS_FOCUS_EXPORT_BUCKET`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` |
+| GCP BigQuery FOCUS export | `gcp-bigquery-focus` | public_cloud | `COSTSOURCE_GCP_LIVE` | `GCP_FOCUS_BQ_DATASET`, `GCP_PROJECT_ID`, `GOOGLE_APPLICATION_CREDENTIALS` |
+| Kubernetes (OpenCost / Kubecost) | `kubernetes` | private_cloud | `COSTSOURCE_KUBERNETES_LIVE` | `KUBERNETES_FOCUS_ENDPOINT` (+ optional `KUBERNETES_FOCUS_TOKEN`) |
+| Nutanix Cloud Manager | `nutanix` | on_prem | `COSTSOURCE_NUTANIX_LIVE` | `NUTANIX_ENDPOINT`, `NUTANIX_API_KEY` |
+
+The live FOCUS-export transport is a thin, clearly-marked seam: until a concrete
+transport is injected, a configured connector reports an honest "not wired" state
+rather than fabricating data.
 
 Durable design rules live in `.obvious/obvious.md` (Design Guidance) and the
 routine skills under `.obvious/skills/`. The full v1 design specification is

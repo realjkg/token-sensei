@@ -55,6 +55,56 @@ export {
   pointFiveLiveDescriptor,
 } from './pointfiveConfig';
 export type { PointFiveStatus, PointFiveCredentials } from './pointfiveConfig';
+
+// Cloud-connectors MVP — config-gated, ships-dark FOCUS-export connectors
+// (public cloud trio + Kubernetes + Nutanix) sharing one adapter and the generic
+// connector-config helper. Like PointFive, only the adapter is source-specific.
+export {
+  isConnectorEnabled,
+  resolveConnectorStatus,
+  connectorStatusNote,
+  connectorDescriptor,
+} from './connectorConfig';
+export type { ConnectorSpec, ConnectorStatus } from './connectorConfig';
+export { CloudConnectorAdapter } from './CloudConnectorAdapter';
+export type {
+  FocusExportTransport,
+  FocusExportTransportFactory,
+  CloudConnectorAdapterDeps,
+} from './CloudConnectorAdapter';
+export {
+  AZURE_SOURCE_ID,
+  AWS_SOURCE_ID,
+  GCP_SOURCE_ID,
+  AZURE_LIVE_FLAG_ENV,
+  AWS_LIVE_FLAG_ENV,
+  GCP_LIVE_FLAG_ENV,
+  AZURE_CONNECTOR_SPEC,
+  AWS_CONNECTOR_SPEC,
+  GCP_CONNECTOR_SPEC,
+  CLOUD_CONNECTOR_SPECS,
+  resolveAzureStatus,
+  resolveAwsStatus,
+  resolveGcpStatus,
+  azureDescriptor,
+  awsDescriptor,
+  gcpDescriptor,
+} from './cloudConnectorConfig';
+export {
+  KUBERNETES_SOURCE_ID,
+  KUBERNETES_LIVE_FLAG_ENV,
+  KUBERNETES_CONNECTOR_SPEC,
+  resolveKubernetesStatus,
+  kubernetesDescriptor,
+} from './kubernetesConfig';
+export {
+  NUTANIX_SOURCE_ID,
+  NUTANIX_LIVE_FLAG_ENV,
+  NUTANIX_CONNECTOR_SPEC,
+  resolveNutanixStatus,
+  nutanixDescriptor,
+} from './nutanixConfig';
+export { FOCUS_EXPORT_CONNECTOR_SPECS, findConnectorSpec } from './focusExportConnectors';
 export type {
   PointFiveMcpClient,
   PointFiveMcpClientFactory,

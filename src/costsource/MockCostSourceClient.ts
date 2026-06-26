@@ -15,6 +15,8 @@ import { COST_SOURCES, findSource, findingsFor, rawRowsForVersion } from './seed
 import { normalizeRows } from './normalize';
 import { PointFiveLiveAdapter } from './PointFiveLiveAdapter';
 import { POINTFIVE_LIVE_SOURCE_ID } from './pointfiveConfig';
+import { CloudConnectorAdapter } from './CloudConnectorAdapter';
+import { findConnectorSpec } from './focusExportConnectors';
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -41,6 +43,14 @@ export class MockCostSourceClient implements CostSourceClient {
     // flag OFF → the adapter throws an honest "not configured" error, no network.
     if (sourceId === POINTFIVE_LIVE_SOURCE_ID) {
       return new PointFiveLiveAdapter().fetchCostRows(window);
+    }
+    // Cloud-connectors MVP sources dispatch to the shared FOCUS-export adapter.
+    // Default build: flag OFF → the adapter throws an honest "not configured"
+    // error and makes no network call; configured but unwired throws "not wired"
+    // rather than silently serving seed data.
+    const connectorSpec = findConnectorSpec(sourceId);
+    if (connectorSpec) {
+      return new CloudConnectorAdapter(connectorSpec).fetchCostRows(window);
     }
     const src = requireSource(sourceId);
     if (!src.configured) {
@@ -79,6 +89,10 @@ export class MockCostSourceClient implements CostSourceClient {
     await delay(80);
     if (sourceId === POINTFIVE_LIVE_SOURCE_ID) {
       return new PointFiveLiveAdapter().healthCheck();
+    }
+    const connectorSpec = findConnectorSpec(sourceId);
+    if (connectorSpec) {
+      return new CloudConnectorAdapter(connectorSpec).healthCheck();
     }
     const src = requireSource(sourceId);
     return {
