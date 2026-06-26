@@ -13,6 +13,8 @@ import type {
 import { CANONICAL_FOCUS_VERSION } from './focusVersions';
 import { COST_SOURCES, findSource, findingsFor, rawRowsForVersion } from './seed';
 import { normalizeRows } from './normalize';
+import { PointFiveLiveAdapter } from './PointFiveLiveAdapter';
+import { POINTFIVE_LIVE_SOURCE_ID } from './pointfiveConfig';
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -35,6 +37,11 @@ export class MockCostSourceClient implements CostSourceClient {
 
   async fetchCostRows(sourceId: string, window: CostWindow): Promise<CostRowsResult> {
     await delay(180);
+    // The live PointFive source dispatches to its own adapter. Default build:
+    // flag OFF → the adapter throws an honest "not configured" error, no network.
+    if (sourceId === POINTFIVE_LIVE_SOURCE_ID) {
+      return new PointFiveLiveAdapter().fetchCostRows(window);
+    }
     const src = requireSource(sourceId);
     if (!src.configured) {
       throw new Error(`Source '${sourceId}' is not configured — live credentials required (PR E)`);
@@ -60,6 +67,9 @@ export class MockCostSourceClient implements CostSourceClient {
 
   async fetchFindings(sourceId: string): Promise<CostFinding[]> {
     await delay(150);
+    if (sourceId === POINTFIVE_LIVE_SOURCE_ID) {
+      return new PointFiveLiveAdapter().fetchFindings();
+    }
     const src = requireSource(sourceId);
     if (!src.configured || !src.capabilities.includes('findings')) return [];
     return findingsFor(src.id);
@@ -67,6 +77,9 @@ export class MockCostSourceClient implements CostSourceClient {
 
   async healthCheck(sourceId: string): Promise<SourceHealth> {
     await delay(80);
+    if (sourceId === POINTFIVE_LIVE_SOURCE_ID) {
+      return new PointFiveLiveAdapter().healthCheck();
+    }
     const src = requireSource(sourceId);
     return {
       sourceId,

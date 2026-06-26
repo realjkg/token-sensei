@@ -16,6 +16,7 @@ import type { CostSourceDescriptor, CostFinding } from './CostSourceClient';
 import type { FocusVersion } from './focusVersions';
 import { isAtLeast } from './focusVersions';
 import type { FocusCoreV10, RawSourceRow } from './focusRows';
+import { pointFiveLiveDescriptor, resolvePointFiveStatus } from './pointfiveConfig';
 
 const RESOURCE_PREFIX = 'arn:ratio:workload/';
 
@@ -60,16 +61,10 @@ export const COST_SOURCES: CostSourceDescriptor[] = [
     configured: true,
     note: 'Offline seed standing in for an on-prem / private-cloud FOCUS export; the live adapter is PR F.',
   },
-  {
-    id: 'pointfive-live',
-    name: 'PointFive (live)',
-    kind: 'pointfive',
-    focusVersion: '1.0',
-    coverage: 'public_cloud',
-    capabilities: ['costRows', 'findings'],
-    configured: false,
-    note: 'Live MCP SSE + OAuth 2.1 adapter — ships dark until credentials exist (PR E).',
-  },
+  // Live PointFive adapter (PR E). Its descriptor is computed from the feature
+  // flag + OAuth env so `configured` honestly reflects whether the dark adapter
+  // has been switched on. Default build: flag OFF → configured:false (ships dark).
+  pointFiveLiveDescriptor(resolvePointFiveStatus(process.env)),
 ];
 
 export function findSource(id: string): CostSourceDescriptor | undefined {

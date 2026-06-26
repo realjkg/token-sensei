@@ -167,30 +167,43 @@ export function CostSourcePage() {
             Cost source
           </p>
           <div className="mb-5 grid gap-2 sm:grid-cols-3">
-            {sources.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => {
-                  setSourceId(s.id);
-                  setLoadState({ status: 'idle' });
-                }}
-                className={[
-                  'rounded-card border p-3 text-left transition-colors',
-                  sourceId === s.id
-                    ? 'border-gate bg-gate/10'
-                    : 'border-edge bg-raised hover:border-gate/50',
-                ].join(' ')}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-txt">{s.name}</span>
-                  <Dot on={s.configured} />
-                </div>
-                <div className="mt-1 flex flex-wrap gap-1">
-                  <Chip>FOCUS v{s.focusVersion}</Chip>
-                  <Chip>{s.coverage.replace('_', ' ')}</Chip>
-                </div>
-              </button>
-            ))}
+            {sources.map((s) => {
+              // Unconfigured sources (e.g. the live PointFive adapter when its
+              // feature flag is OFF) render dark: dimmed, with a DARK badge. They
+              // stay selectable so the demo can show the honest ships-dark health
+              // — selecting one makes no network call.
+              const isDark = !s.configured;
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => {
+                    setSourceId(s.id);
+                    setLoadState({ status: 'idle' });
+                  }}
+                  className={[
+                    'rounded-card border p-3 text-left transition-colors',
+                    sourceId === s.id
+                      ? 'border-gate bg-gate/10'
+                      : 'border-edge bg-raised hover:border-gate/50',
+                    isDark ? 'opacity-60' : '',
+                  ].join(' ')}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-txt">{s.name}</span>
+                    <Dot on={s.configured} />
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    <Chip>FOCUS v{s.focusVersion}</Chip>
+                    <Chip>{s.coverage.replace('_', ' ')}</Chip>
+                    {isDark && (
+                      <span className="rounded-md border border-cost/40 bg-cost/10 px-2 py-0.5 font-mono text-[11px] text-cost">
+                        DARK
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
           </div>
 
           {selected && (
