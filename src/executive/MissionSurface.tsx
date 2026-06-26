@@ -7,22 +7,29 @@
 import { usePersona } from '@/lib/persona';
 import { MissionBoard } from '@/mission/MissionBoard';
 import { TechnicalViewToggle } from '@/components/TechnicalViewToggle';
+import { ChatPanel } from '@/components/ai/ChatPanel';
 import { InitiativeDashboard } from './InitiativeDashboard';
 
 export function MissionSurface() {
   const { persona } = usePersona();
 
-  if (persona === 'technical') {
-    return (
-      <div className="min-h-screen bg-void">
-        <div className="flex justify-end border-b border-edge bg-deep px-4 py-2">
-          <TechnicalViewToggle className="rounded-full border border-edge px-3 py-1 text-gate hover:bg-raised" />
+  // The AIClient-backed ChatPanel is a fixed overlay rendered once for both
+  // branches — it sits identically over the executive (light) Initiative
+  // Dashboard and the technical (dark) Mission Board (Wave3b spec §7.3).
+  return (
+    <>
+      {persona === 'technical' ? (
+        <div className="min-h-screen bg-void">
+          <div className="flex justify-end border-b border-edge bg-deep px-4 py-2">
+            <TechnicalViewToggle className="rounded-full border border-edge px-3 py-1 text-gate hover:bg-raised" />
+          </div>
+          <MissionBoard />
         </div>
-        <MissionBoard />
-      </div>
-    );
-  }
-
-  return <InitiativeDashboard />;
+      ) : (
+        <InitiativeDashboard />
+      )}
+      <ChatPanel />
+    </>
+  );
 }
 

@@ -17,6 +17,8 @@ import { ALERTS } from '@/data/alerts';
 import { MODEL_REGISTRY } from '@/data/models';
 import { allGatesPassed } from '@/lib/derive';
 import { createAgentClient } from '@/agent';
+import { buildAIContext, createAIClient } from '@/ai';
+import type { AIMessage } from '@/ai';
 
 export type SecondaryMode = 'value' | 'cost' | 'unit';
 export type DetailTab = 'budget' | 'models' | 'governance' | 'demand' | 'unit' | 'alerts';
@@ -28,6 +30,19 @@ export interface ChatMessage {
   text: string;
   timestamp: string;
   workloadsReferenced?: string[];
+}
+
+// Wave3b AI chat slice. Distinct from the Phase 1 agent slice above: multi-turn
+// history, server-proxied via the AIClient seam (no key in the browser).
+export type AIChatRole = 'user' | 'assistant' | 'system';
+
+export interface AIChatMessage {
+  id: string;
+  role: AIChatRole;
+  content: string;
+  timestamp: string;
+  initiativesReferenced?: string[];
+  provider?: 'claude' | 'openai' | 'openllm' | 'mock';
 }
 
 export interface Filters {
@@ -57,6 +72,13 @@ const GATE_KEY: Record<GovernanceGateId, GateKey> = {
 
 const agent = createAgentClient();
 
+// NEXT_PUBLIC_AI_MODE is a routing flag (mock | live), NOT a credential. Live
+// mode proxies /api/ai/chat; the LLM key stays server-side. Default is mock so
+// the app runs fully offline with no keys.
+const aiClient = createAIClient(
+  process.env.NEXT_PUBLIC_AI_MODE === 'live' ? 'live' : 'mock',
+);
+
 let messageSeq = 0;
 function nextMessageId(): string {
   messageSeq += 1;
@@ -79,6 +101,11 @@ interface AppState {
   agentThinking: boolean;
   agentMode: 'mock' | 'live';
 
+  aiMessages: AIChatMessage[];
+  aiThinking: boolean;
+  aiMode: 'mock' | 'live';
+  aiPanelOpen: boolean;
+
   select: (id: string) => void;
   setTab: (tab: DetailTab) => void;
   setSecondaryMode: (mode: SecondaryMode) => void;
@@ -94,6 +121,9 @@ interface AppState {
   acknowledgeAlert: (alertId: string) => void;
 
   sendMessage: (query: string) => Promise<void>;
+
+  sendAIMessage: (content: string) => Promise<void>;
+  toggleAIPanel: () => void;
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -118,6 +148,19 @@ export const useStore = create<AppState>((set, get) => ({
   ],
   agentThinking: false,
   agentMode: agent.mode,
+
+  aiMessages: [
+    {
+      id: nextMessageId(),
+      role: 'system',
+      content:
+        'Ratio AI online. Ask about initiative risk, cost drivers, or savings — every answer is grounded in your live portfolio data.',
+      timestamp: DEMO_NOW.toISOString(),
+    },
+  ],
+  aiThinking: false,
+  aiMode: aiClient.mode,
+  aiPanelOpen: false,
 
   select: (id) => set({ selectedId: id }),
   setTab: (tab) => set({ activeTab: tab }),
@@ -224,5 +267,58 @@ export const useStore = create<AppState>((set, get) => ({
       set((state) => ({ messages: [...state.messages, errorMessage], agentThinking: false }));
     }
   },
+
+  sendAIMessage: async (content) => {
+    const trimmed = content.trim();
+    if (!trimmed) return;
+    const { workloads, selectedId, now, aiMessages } = get();
+
+    const userMessage: AIChatMessage = {
+      id: nextMessageId(),
+      role: 'user',
+      content: trimmed,
+      timestamp: new Date().toISOString(),
+    };
+    set((state) => ({ aiMessages: [...state.aiMessages, userMessage], aiThinking: true }));
+
+    // Wire history: prior user/assistant turns + this one. System messages (the
+    // welcome line and any inline errors) are dropped — the route builds and
+    // prepends its own system prompt from the context.
+    const history: AIMessage[] = [...aiMessages, userMessage]
+      .filter((m) => m.role === 'user' || m.role === 'assistant')
+      .map((m) => ({ role: m.role, content: m.content }));
+    const context = buildAIContext(workloads, selectedId || null, now);
+
+    try {
+      const reply = await aiClient.chat(history, context);
+      const assistantMessage: AIChatMessage = {
+        id: nextMessageId(),
+        role: 'assistant',
+        content: reply.message.content,
+        timestamp: new Date().toISOString(),
+        initiativesReferenced: reply.initiativesReferenced,
+        provider: reply.provider,
+      };
+      set((state) => ({
+        aiMessages: [...state.aiMessages, assistantMessage],
+        aiThinking: false,
+      }));
+    } catch (error) {
+      // Never swallow the failure — surface it inline so the user can retry.
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage: AIChatMessage = {
+        id: nextMessageId(),
+        role: 'system',
+        content: `AI error: ${message}`,
+        timestamp: new Date().toISOString(),
+      };
+      set((state) => ({
+        aiMessages: [...state.aiMessages, errorMessage],
+        aiThinking: false,
+      }));
+    }
+  },
+
+  toggleAIPanel: () => set((state) => ({ aiPanelOpen: !state.aiPanelOpen })),
 }));
 
