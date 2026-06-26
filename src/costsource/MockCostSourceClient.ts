@@ -1,0 +1,84 @@
+// In-memory mock — no network. Serves the offline seed through the same
+// CostSourceClient interface the live adapter will implement. Mirrors
+// MockFinioClient / MockTokenomicsClient: small delays make loading states
+// visible; everything runs over bundled seed data.
+import type {
+  CostSourceClient,
+  CostSourceDescriptor,
+  CostRowsResult,
+  CostFinding,
+  SourceHealth,
+  CostWindow,
+} from './CostSourceClient';
+import { CANONICAL_FOCUS_VERSION } from './focusVersions';
+import { COST_SOURCES, findSource, findingsFor, rawRowsForVersion } from './seed';
+import { normalizeRows } from './normalize';
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Resolve a source descriptor or throw a typed error the demo surfaces. */
+function requireSource(sourceId: string): CostSourceDescriptor {
+  const src = findSource(sourceId);
+  if (!src) throw new Error(`Unknown cost source '${sourceId}'`);
+  return src;
+}
+
+export class MockCostSourceClient implements CostSourceClient {
+  readonly mode = 'mock' as const;
+
+  async listSources(): Promise<CostSourceDescriptor[]> {
+    await delay(120);
+    return COST_SOURCES.map((s) => ({ ...s }));
+  }
+
+  async fetchCostRows(sourceId: string, window: CostWindow): Promise<CostRowsResult> {
+    await delay(180);
+    const src = requireSource(sourceId);
+    if (!src.configured) {
+      throw new Error(`Source '${sourceId}' is not configured — live credentials required (PR E)`);
+    }
+    if (!src.capabilities.includes('costRows')) {
+      throw new Error(`Source '${sourceId}' does not provide cost rows`);
+    }
+    const { rows, backfilledColumns } = normalizeRows(
+      rawRowsForVersion(src.focusVersion),
+      src.id,
+      src.focusVersion,
+    );
+    return {
+      sourceId,
+      sourceVersion: src.focusVersion,
+      canonicalVersion: CANONICAL_FOCUS_VERSION,
+      backfilledColumns,
+      window,
+      generatedAt: new Date().toISOString(),
+      rows,
+    };
+  }
+
+  async fetchFindings(sourceId: string): Promise<CostFinding[]> {
+    await delay(150);
+    const src = requireSource(sourceId);
+    if (!src.configured || !src.capabilities.includes('findings')) return [];
+    return findingsFor(src.id);
+  }
+
+  async healthCheck(sourceId: string): Promise<SourceHealth> {
+    await delay(80);
+    const src = requireSource(sourceId);
+    return {
+      sourceId,
+      reachable: src.configured,
+      authed: src.configured,
+      sourceVersion: src.focusVersion,
+      canonicalVersion: CANONICAL_FOCUS_VERSION,
+      checkedAt: new Date().toISOString(),
+      detail: src.configured
+        ? 'Sandbox adapter reachable; serving offline seed data.'
+        : 'Specified but not configured — live credentials required (ships dark).',
+    };
+  }
+}
+
