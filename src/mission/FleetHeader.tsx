@@ -1,6 +1,6 @@
-// Fleet header (Ratio v2 Workstream 1) — the portfolio summary read as a mission
-// briefing: total fleet fuel, total value returned, and how many missions need
-// attention. Aggregates trace to the same engine outputs the cards use.
+// Portfolio header (Ratio v2 Workstream 1 / Wave3a). Portfolio summary bar:
+// total value returned, workloads needing attention, and aggregate budget
+// consumed. Aggregates trace to the same engine outputs the cards use.
 import { motion, useReducedMotion } from 'framer-motion';
 import { formatRatio } from '@/lib/format';
 import { TOKEN_HEX } from '@/lib/scales';
@@ -15,14 +15,11 @@ export function FleetHeader({ fleet }: FleetHeaderProps) {
   const attentionColor = fleet.needsAttention > 0 ? TOKEN_HEX.shape : TOKEN_HEX.value;
 
   return (
-    <header className="rounded-2xl border border-edge bg-slab p-6">
+    <header className="rounded-card border border-edge bg-slab p-6">
       <div className="flex flex-wrap items-end justify-between gap-6">
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-gate">
-            Ratio Mission Control
-          </p>
-          <h1 className="mt-1 font-body text-2xl font-semibold tracking-tight text-txt">
-            Fleet Status
+          <h1 className="font-body text-2xl font-semibold tracking-tight text-txt">
+            Workload Portfolio
           </h1>
         </div>
 
@@ -53,7 +50,7 @@ export function FleetHeader({ fleet }: FleetHeaderProps) {
       {/* Fleet fuel gauge */}
       <div className="mt-6">
         <div className="mb-1.5 flex items-center justify-between font-mono text-[10px] uppercase tracking-wider text-dim">
-          <span>Fleet fuel</span>
+          <span>Portfolio budget consumed</span>
           <span style={{ color: fleet.fleetFuelColor }}>{fleet.fleetFuelPct}%</span>
         </div>
         <div
@@ -62,8 +59,8 @@ export function FleetHeader({ fleet }: FleetHeaderProps) {
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuetext={`${fleet.fleetFuelPct}% of fleet daily budget consumed`}
-          aria-label="Fleet fuel (aggregate daily budget consumed)"
-          className="h-2.5 w-full overflow-hidden rounded-full bg-raised"
+          aria-label="Portfolio budget consumed (aggregate daily budget)"
+          className="h-1.5 w-full overflow-hidden rounded-full bg-raised"
         >
           <motion.div
             className="h-full rounded-full"

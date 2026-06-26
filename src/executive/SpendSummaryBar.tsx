@@ -31,7 +31,7 @@ export function SpendSummaryBar({ summary }: { summary: SpendSummary }) {
   return (
     <section
       aria-label="Spend summary"
-      className="flex flex-wrap items-center gap-x-8 gap-y-4 rounded-2xl border border-exec-border bg-exec-surface px-6 py-5 shadow-sm"
+      className="flex flex-wrap items-center gap-x-8 gap-y-4 rounded-card border border-exec-border bg-exec-surface px-6 py-5 shadow-sm"
     >
       {metrics.map((m) => (
         <div key={m.label} className="flex flex-col gap-1">

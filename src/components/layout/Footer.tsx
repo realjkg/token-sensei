@@ -1,5 +1,6 @@
-// Footer alert ticker — spec §3.6. Single-line scrolling ticker of the most
-// recent alerts; clicking an item jumps to that workload's Alert History.
+// Footer alert bar (Ratio v2 / Wave3a). Static strip showing the three most
+// recent unacknowledged alerts inline — no scrolling animation. Clicking an
+// alert navigates to that workload’s Alert History tab.
 
 import { useMemo } from 'react';
 import { useStore } from '@/store/useStore';
@@ -25,11 +26,13 @@ export function Footer() {
   const select = useStore((s) => s.select);
   const setTab = useStore((s) => s.setTab);
 
-  const sorted = useMemo(
+  // Most-recent three unacknowledged alerts, sorted descending by time.
+  const top3 = useMemo(
     () =>
-      [...alerts].sort(
-        (a, b) => new Date(b.triggered_at).getTime() - new Date(a.triggered_at).getTime(),
-      ),
+      [...alerts]
+        .filter((a) => !a.acknowledged)
+        .sort((a, b) => new Date(b.triggered_at).getTime() - new Date(a.triggered_at).getTime())
+        .slice(0, 3),
     [alerts],
   );
 
@@ -40,32 +43,30 @@ export function Footer() {
     setTab('alerts');
   };
 
-  // Duplicate the list so the marquee loops seamlessly (translateX -50%).
-  const items = [...sorted, ...sorted];
+  if (top3.length === 0) return null;
 
   return (
-    <footer className="flex h-8 shrink-0 items-center overflow-hidden border-t border-edge bg-deep">
-      <span className="flex h-full items-center gap-1.5 border-r border-edge bg-slab px-3 text-[10px] font-bold uppercase tracking-wider text-dim">
-        Live alerts
+    <footer className="flex h-8 shrink-0 items-center gap-4 overflow-hidden border-t border-edge bg-deep px-4">
+      <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-dim">
+        Alerts
       </span>
-      <div className="relative flex-1 overflow-hidden">
-        <div className="animate-ticker flex w-max items-center gap-8 whitespace-nowrap px-4">
-          {items.map((alert, i) => (
-            <button
-              key={`${alert.id}-${i}`}
-              type="button"
-              onClick={() => onClick(alert)}
-              className="flex items-center gap-2 text-xs text-sub transition-colors hover:text-txt"
-            >
-              <span style={{ color: SEVERITY_COLOR[alert.severity] }}>
-                {severityIcon(alert.severity)}
-              </span>
-              <span className="font-mono font-medium text-txt">{nameFor(alert.workload_id)}:</span>
-              <span>{alert.message}</span>
-              <span className="text-dim">· {timeAgo(alert.triggered_at, DEMO_NOW)}</span>
-            </button>
-          ))}
-        </div>
+      <div className="flex min-w-0 flex-1 items-center gap-6 overflow-hidden">
+        {top3.map((alert) => (
+          <button
+            key={alert.id}
+            type="button"
+            onClick={() => onClick(alert)}
+            className="flex shrink-0 items-center gap-2 text-xs text-sub transition-colors hover:text-txt"
+          >
+            <span style={{ color: SEVERITY_COLOR[alert.severity] }}>
+              {severityIcon(alert.severity)}
+            </span>
+            <span className="font-mono font-medium text-txt">{nameFor(alert.workload_id)}:</span>
+            <span className="truncate">{alert.message}</span>
+            <span className="text-dim">· {timeAgo(alert.triggered_at, DEMO_NOW)}</span>
+          </button>
+        ))}
+
       </div>
     </footer>
   );

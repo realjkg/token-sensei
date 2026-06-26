@@ -102,7 +102,7 @@ export function SnapshotButton() {
             animate={{ opacity: 1, y: 0 }}
             exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -4 }}
             transition={{ duration: 0.15 }}
-            className="absolute right-0 z-10 mt-2 w-56 overflow-hidden rounded-xl border border-exec-border bg-exec-surface shadow-lg"
+            className="absolute right-0 z-10 mt-2 w-56 overflow-hidden rounded-lg border border-exec-border bg-exec-surface shadow-lg"
           >
             {OPTIONS.map((opt) => (
               <button

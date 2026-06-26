@@ -77,14 +77,14 @@ export function AccuracyLedgerSummary() {
 
   if (state.status === 'loading') {
     return (
-      <div className="rounded-2xl border border-edge bg-deep p-4 font-mono text-[11px] text-dim">
+      <div className="rounded-card border border-edge bg-deep p-4 font-mono text-[11px] text-dim">
         Loading accuracy ledger…
       </div>
     );
   }
   if (state.status === 'error') {
     return (
-      <div className="rounded-2xl border border-cost bg-deep p-4 font-mono text-[11px] text-cost">
+      <div className="rounded-card border border-cost bg-deep p-4 font-mono text-[11px] text-cost">
         {state.message}
       </div>
     );
@@ -98,7 +98,7 @@ function LedgerView({ report }: { report: AccuracyReport }) {
   const overallP90 = report.overall.p90Accuracy;
 
   return (
-    <div className="rounded-2xl border border-edge bg-deep p-4">
+    <div className="rounded-card border border-edge bg-deep p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-body text-sm font-semibold text-txt">Prediction accuracy ledger</h3>
         {report.coldStart ? (

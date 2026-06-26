@@ -30,7 +30,7 @@ export function FuelAndValue({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-xs">
-        <span className="font-mono uppercase tracking-wider text-dim">Fuel</span>
+        <span className="font-mono uppercase tracking-wider text-dim">Budget consumed</span>
         {/* R4: the value badge is part of the same component as the gauge. */}
         <span
           className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-mono text-xs font-bold"
@@ -46,7 +46,7 @@ export function FuelAndValue({
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuetext={valueText}
-        aria-label="Daily fuel (budget consumed)"
+        aria-label="Daily budget consumed"
         className="h-2.5 w-full overflow-hidden rounded-full bg-raised"
       >
         <motion.div
