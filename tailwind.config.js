@@ -27,9 +27,10 @@ module.exports = {
         gcp: '#4285f4',
         // Executive light surface (Ratio v2 Wave 2). Token accents (value/cost/
         // shape/gate/unit) are unchanged — they read on both backgrounds.
-        'exec-bg': '#f8fafc',
+        'exec-bg': '#f5f8fb',
         'exec-surface': '#ffffff',
-        'exec-border': '#e2e8f0',
+        'exec-border': '#d8e1ec',
+        'exec-hover': '#edf2f7',
         'exec-text': '#0f172a',
         'exec-muted': '#64748b',
       },
@@ -38,7 +39,7 @@ module.exports = {
         body: ['"Instrument Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
-        card: '8px',
+        card: '6px',
       },
     },
   },

@@ -19,8 +19,8 @@ export function InitiativeCard({ initiative, lang, showLens }: InitiativeCardPro
 
   return (
     <article
-      className="flex flex-col gap-4 rounded-2xl border border-exec-border bg-exec-surface p-5 shadow-sm"
-      style={{ borderTop: `3px solid ${meta.color}` }}
+      className="flex flex-col gap-4 rounded-card border border-exec-border bg-exec-surface p-5 shadow-sm"
+      style={{ borderLeft: `2px solid ${meta.color}` }}
     >
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -98,7 +98,7 @@ function MatrixedLens({ initiative }: { initiative: InitiativeView }) {
   }
 
   return (
-    <dl className="space-y-1 rounded-xl bg-exec-bg px-3 py-2.5 text-[11px] leading-snug">
+    <dl className="space-y-1 rounded-card bg-exec-bg px-3 py-2.5 text-[11px] leading-snug">
       {rows.map((r) => (
         <div key={r.role} className="flex gap-1.5">
           <dt className="shrink-0 font-semibold text-exec-text">{r.role}:</dt>

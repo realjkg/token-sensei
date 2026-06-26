@@ -20,10 +20,10 @@ export function Header() {
     <header className="flex items-center gap-6 border-b border-edge bg-deep px-5 h-14 shrink-0">
       <div className="flex items-center gap-2.5">
         <span
-          className="flex h-7 w-7 items-center justify-center rounded-md font-mono text-lg font-bold text-void"
-          style={{ background: 'linear-gradient(135deg, #00e09e, #00ccee)' }}
+          className="flex h-7 w-7 items-center justify-center rounded-md font-mono text-lg font-bold"
+          style={{ background: 'var(--gate)' }}
         >
-          %
+          <span className="text-white">%</span>
         </span>
         <span className="font-mono text-lg font-bold tracking-tight text-txt">Ratio</span>
         <span className="hidden text-[10px] uppercase tracking-widest text-dim sm:inline">

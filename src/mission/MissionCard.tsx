@@ -1,16 +1,15 @@
-// Mission card (Ratio v2 Workstream 1, Layer 1). One workload rendered as a
-// mission: plain-language name, status pulse, fuel gauge + value badge (R4), and
-// a one-line trajectory verdict. Rounded, character-driven treatment over the
-// durable tokens — no new brand colors. Drill-down (Mission Detail) is PR B.
-import { motion, useReducedMotion } from 'framer-motion';
+// Mission card (Ratio v2 Workstream 1, Layer 1 / Wave3a clean enterprise). One
+// workload rendered as a data tile: name, status dot, budget gauge + value badge
+// (R4), trajectory verdict, and a drill-down affordance. Left-border accent
+// replaces the gamified top-border + card-lift pattern.
 import { TOKEN_HEX } from '@/lib/scales';
 import { FuelAndValue } from './FuelAndValue';
 import type { MissionStatus, MissionView } from './missionModel';
 import { StatusPulse } from './StatusPulse';
 
 const STATUS_META: Record<MissionStatus, { label: string; color: string }> = {
-  nominal: { label: 'NOMINAL', color: TOKEN_HEX.value },
-  caution: { label: 'CAUTION', color: TOKEN_HEX.shape },
+  nominal: { label: 'ON TRACK', color: TOKEN_HEX.value },
+  caution: { label: 'AT RISK', color: TOKEN_HEX.shape },
   critical: { label: 'CRITICAL', color: TOKEN_HEX.cost },
 };
 
@@ -21,21 +20,18 @@ interface MissionCardProps {
 }
 
 export function MissionCard({ mission, onOpen }: MissionCardProps) {
-  const reducedMotion = useReducedMotion() ?? false;
   const meta = STATUS_META[mission.status];
 
   return (
-    <motion.button
+    <button
       type="button"
       onClick={onOpen}
-      aria-label={`Open ${mission.name} mission detail — ${meta.label}, ${mission.fuelPct}% fuel, value ratio ${mission.valueRatio.toFixed(1)}x`}
+      aria-label={`Open ${mission.name} workload detail — ${meta.label}, ${mission.fuelPct}% budget consumed, value ratio ${mission.valueRatio.toFixed(1)}x`}
       data-mission-id={mission.id}
-      className="flex w-full flex-col gap-4 rounded-2xl border border-edge bg-slab p-5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-gate"
-      style={{ borderTop: `3px solid ${meta.color}` }}
-      whileHover={reducedMotion ? undefined : { y: -4 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 24 }}
+      className="flex w-full flex-col gap-4 rounded-card border border-edge bg-slab p-5 text-left transition-colors hover:bg-raised focus:outline-none focus-visible:ring-2 focus-visible:ring-gate"
+      style={{ borderLeft: `2px solid ${meta.color}` }}
     >
-      {/* Header: plain-language mission name + live status pulse */}
+      {/* Header: workload name + status dot */}
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="truncate font-body text-base font-semibold text-txt">{mission.name}</h3>
@@ -46,7 +42,7 @@ export function MissionCard({ mission, onOpen }: MissionCardProps) {
         <StatusPulse status={mission.status} />
       </header>
 
-      {/* Status label */}
+      {/* Status badge */}
       <div className="flex items-center gap-2">
         <span
           className="rounded-full px-2 py-0.5 font-mono text-[10px] font-bold tracking-widest"
@@ -61,7 +57,7 @@ export function MissionCard({ mission, onOpen }: MissionCardProps) {
         )}
       </div>
 
-      {/* Fuel gauge + value badge (R4 — never one without the other) */}
+      {/* Budget gauge + value badge (R4 — never one without the other) */}
       <FuelAndValue
         fuelPct={mission.fuelPct}
         fuelColor={mission.fuelColor}
@@ -81,9 +77,9 @@ export function MissionCard({ mission, onOpen }: MissionCardProps) {
 
       {/* Drill-down affordance into Mission Detail (Layer 2) */}
       <span aria-hidden className="font-mono text-[11px] font-semibold text-gate">
-        Open mission →
+        View details →
       </span>
-    </motion.button>
+    </button>
   );
 }
 

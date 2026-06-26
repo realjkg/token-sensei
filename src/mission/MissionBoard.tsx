@@ -80,7 +80,7 @@ export function MissionBoard() {
             <div className="mx-auto max-w-6xl space-y-8">
               <FleetHeader fleet={fleet} />
 
-              <main aria-label="Mission board">
+              <main aria-label="Workload board">
                 <h2 className="sr-only">Missions</h2>
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                   {missions.map((mission) => (

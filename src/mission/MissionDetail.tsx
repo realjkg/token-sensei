@@ -36,18 +36,18 @@ interface MissionSection {
 }
 
 const SECTIONS: MissionSection[] = [
-  { tab: 'budget', label: 'Fuel & Trajectory', v1: 'Budget Profile' },
-  { tab: 'models', label: 'Engine Options', v1: 'Multi-Model' },
-  { tab: 'governance', label: 'Mission Readiness', v1: 'Governance Gates' },
-  { tab: 'demand', label: 'Flight Plan', v1: 'Demand Shaping' },
-  { tab: 'unit', label: 'Mission Economics', v1: 'Unit Costs' },
-  { tab: 'alerts', label: 'Mission Log', v1: 'Alert History' },
-  { tab: 'adjust', label: 'Mission Adjustments' },
+  { tab: 'budget', label: 'Budget & Forecast', v1: 'Budget Profile' },
+  { tab: 'models', label: 'Model Selection', v1: 'Multi-Model' },
+  { tab: 'governance', label: 'Governance', v1: 'Governance Gates' },
+  { tab: 'demand', label: 'Demand Shaping', v1: 'Demand Shaping' },
+  { tab: 'unit', label: 'Unit Costs', v1: 'Unit Costs' },
+  { tab: 'alerts', label: 'Alert History', v1: 'Alert History' },
+  { tab: 'adjust', label: 'Proposed Changes' },
 ];
 
 const STATUS_META: Record<MissionStatus, { label: string; color: string }> = {
-  nominal: { label: 'NOMINAL', color: TOKEN_HEX.value },
-  caution: { label: 'CAUTION', color: TOKEN_HEX.shape },
+  nominal: { label: 'ON TRACK', color: TOKEN_HEX.value },
+  caution: { label: 'AT RISK', color: TOKEN_HEX.shape },
   critical: { label: 'CRITICAL', color: TOKEN_HEX.cost },
 };
 
@@ -112,7 +112,7 @@ export function MissionDetail({ missionId, onBack }: MissionDetailProps) {
       <div className="min-h-screen bg-void px-4 py-10 font-body text-txt">
         <div className="mx-auto max-w-5xl space-y-6">
           <BackToFleet ref={backButtonRef} onBack={onBack} />
-          <p className="text-sm text-dim">Mission not found.</p>
+          <p className="text-sm text-dim">Workload not found.</p>
         </div>
       </div>
     );
@@ -131,7 +131,7 @@ export function MissionDetail({ missionId, onBack }: MissionDetailProps) {
 
         {/* Mission header — R4: the value badge rides in the header so no cost
             section ever appears without its value context. */}
-        <header className="rounded-2xl border border-edge bg-slab p-6" style={{ borderTop: `3px solid ${meta.color}` }}>
+        <header className="rounded-card border border-edge bg-slab p-6" style={{ borderLeft: `2px solid ${meta.color}` }}>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0">
               <h1 className="font-body text-2xl font-semibold tracking-tight text-txt">
@@ -174,7 +174,7 @@ export function MissionDetail({ missionId, onBack }: MissionDetailProps) {
         {/* Section nav — ARIA tablist so keyboard users can arrow between sections.
             Only the active tab is in the tab sequence (tabIndex 0); the rest are
             reachable via Left/Right/Home/End (roving tabindex pattern). */}
-        <nav role="tablist" aria-label="Mission sections" className="flex flex-wrap gap-2">
+        <nav role="tablist" aria-label="Workload sections" className="flex flex-wrap gap-2">
           {SECTIONS.map((s, idx) => {
             const active = section === s.tab;
             return (
@@ -212,7 +212,7 @@ export function MissionDetail({ missionId, onBack }: MissionDetailProps) {
           role="tabpanel"
           aria-labelledby={`mission-tab-${section}`}
           tabIndex={0}
-          className="space-y-5 rounded-2xl border border-edge bg-deep p-6 focus:outline-none focus-visible:ring-2 focus-visible:ring-gate"
+          className="space-y-5 rounded-card border border-edge bg-deep p-6 focus:outline-none focus-visible:ring-2 focus-visible:ring-gate"
         >
           {/* Lineage caption — each mission section IS a full v1 capability. */}
           {activeSection && (
@@ -251,10 +251,10 @@ const BackToFleet = forwardRef<HTMLButtonElement, { onBack: () => void }>(
         ref={ref}
         type="button"
         onClick={onBack}
-        aria-label="Back to mission fleet"
+        aria-label="Back to workload board"
         className="inline-flex items-center gap-1.5 font-mono text-xs text-sub transition-colors hover:text-txt focus:outline-none focus-visible:ring-2 focus-visible:ring-gate"
       >
-        <span aria-hidden>&#8592;</span> Fleet
+        <span aria-hidden>&#8592;</span> Portfolio
       </button>
     );
   },

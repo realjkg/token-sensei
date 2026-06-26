@@ -106,7 +106,7 @@ export function AdjustmentCards({ workload }: { workload: Workload }) {
   return (
     <div className="space-y-4">
       <header className="space-y-1">
-        <h3 className="font-body text-sm font-semibold text-txt">Mission Adjustments</h3>
+        <h3 className="font-body text-sm font-semibold text-txt">Proposed Changes</h3>
         <p className="max-w-prose font-body text-xs text-sub">
           Propose a change and Ratio predicts its cost impact — always beside the
           value-ratio effect (R4) — then routes it by confidence: cleared for a
@@ -149,7 +149,7 @@ function AdjustmentTile({
   }, [change]);
 
   return (
-    <section className="rounded-2xl border border-edge bg-slab p-4">
+    <section className="rounded-card border border-edge bg-slab p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="font-mono text-[10px] uppercase tracking-wider text-dim">
