@@ -1,7 +1,9 @@
 // Budget bar — spec §3.4.1 + §10.4. Fill colored by utilization, soft/hard/kill
 // threshold markers, and a semi-transparent projected-overshoot extension past
-// 100%. Pure presentational: all numbers are passed in.
+// 100%. Framer Motion animates the fill on mount; prefers-reduced-motion skips
+// the animation. Exposes progressbar ARIA so screen readers announce the value.
 
+import { motion, useReducedMotion } from 'framer-motion';
 import { budgetColor } from '@/lib/scales';
 
 export function BudgetBar({
@@ -10,23 +12,39 @@ export function BudgetBar({
   soft,
   hard,
   kill,
+  label = 'Budget consumption',
 }: {
   pctUsed: number;
   projectedPct: number;
   soft: number;
   hard: number;
   kill: number;
+  /** Accessible label for the progressbar; defaults to 'Budget consumption'. */
+  label?: string;
 }) {
+  const reducedMotion = useReducedMotion() ?? false;
   const fillPct = Math.min(pctUsed, 1) * 100;
   const fillColor = budgetColor(pctUsed);
   // Overshoot = projected spend beyond 100%, drawn faint red past the fill.
   const overshootPct = Math.max(Math.min(projectedPct, 1.4) - 1, 0) * 100;
+  const displayPct = Math.round(pctUsed * 100);
 
   return (
-    <div className="relative h-6 w-full overflow-hidden rounded bg-void">
-      <div
-        className="absolute inset-y-0 left-0 rounded-l transition-all"
-        style={{ width: `${fillPct}%`, background: fillColor }}
+    <div
+      role="progressbar"
+      aria-valuenow={displayPct}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuetext={`${displayPct}% of budget consumed`}
+      aria-label={label}
+      className="relative h-6 w-full overflow-hidden rounded bg-void"
+    >
+      <motion.div
+        className="absolute inset-y-0 left-0 rounded-l"
+        style={{ background: fillColor }}
+        initial={reducedMotion ? false : { width: 0 }}
+        animate={{ width: `${fillPct}%` }}
+        transition={reducedMotion ? { duration: 0 } : { duration: 0.8, ease: 'easeOut' }}
       />
       {overshootPct > 0 && (
         <div
@@ -56,4 +74,5 @@ function Marker({ pct }: { pct: number }) {
     />
   );
 }
+
 

@@ -3,9 +3,11 @@
 // re-presented as mission sections. The six v1 detail tabs are reused verbatim
 // in capability (relabeled, not reduced), so a practitioner loses nothing while
 // a newcomer is never forced to see it. No engine changes — values are identical
-// to the v1 detail panel. Renders fully offline on mock data. Status-pulse /
-// Lottie motion and the full a11y pass are PR C; this is the structural view.
-import { useState } from 'react';
+// to the v1 detail panel. Renders fully offline on mock data.
+//
+// Accessibility (PR C): Escape to close, auto-focus back button on open, ARIA
+// tablist with Left/Right/Home/End arrow-key navigation across mission sections.
+import { forwardRef, useCallback, useEffect, useRef, useState } from 'react';
 import { useStore, type DetailTab } from '@/store/useStore';
 import { formatInt, formatRatio } from '@/lib/format';
 import { PROVIDER_LABEL, ratioColor, TOKEN_HEX } from '@/lib/scales';
@@ -55,8 +57,45 @@ export function MissionDetail({ missionId, onBack }: MissionDetailProps) {
   const now = useStore((s) => s.now);
 
   // Each mission detail keeps its own open section, defaulting to Fuel &
-  // Trajectory (the spec's default drill-down section).
+  // Trajectory (the spec’s default drill-down section).
   const [section, setSection] = useState<DetailTab>('budget');
+
+  // Ref for auto-focus on open (WCAG 2.4.3 — moving keyboard focus into the new
+  // view so screen-reader users know the context changed).
+  const backButtonRef = useRef<HTMLButtonElement>(null);
+  // One ref slot per SECTIONS entry — used for arrow-key focus in the tablist.
+  const sectionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
+  // Auto-focus the back button when the detail mounts.
+  useEffect(() => {
+    backButtonRef.current?.focus();
+  }, []);
+
+  // Escape anywhere in the detail closes it and returns to the board.
+  useEffect(() => {
+    function handler(e: KeyboardEvent) {
+      if (e.key === 'Escape') onBack();
+    }
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onBack]);
+
+  // ARIA tablist arrow-key navigation (roving tabindex pattern).
+  const handleSectionKey = useCallback(
+    (e: React.KeyboardEvent, idx: number) => {
+      let target: number | null = null;
+      if (e.key === 'ArrowRight') target = (idx + 1) % SECTIONS.length;
+      else if (e.key === 'ArrowLeft') target = (idx - 1 + SECTIONS.length) % SECTIONS.length;
+      else if (e.key === 'Home') target = 0;
+      else if (e.key === 'End') target = SECTIONS.length - 1;
+      if (target !== null) {
+        e.preventDefault();
+        setSection(SECTIONS[target].tab);
+        sectionRefs.current[target]?.focus();
+      }
+    },
+    [],
+  );
 
   const workload = workloads.find((w) => w.id === missionId);
   const budget = budgets.find((b) => b.workload_id === missionId);
@@ -65,7 +104,7 @@ export function MissionDetail({ missionId, onBack }: MissionDetailProps) {
     return (
       <div className="min-h-screen bg-void px-4 py-10 font-body text-txt">
         <div className="mx-auto max-w-5xl space-y-6">
-          <BackToFleet onBack={onBack} />
+          <BackToFleet ref={backButtonRef} onBack={onBack} />
           <p className="text-sm text-dim">Mission not found.</p>
         </div>
       </div>
@@ -81,7 +120,7 @@ export function MissionDetail({ missionId, onBack }: MissionDetailProps) {
   return (
     <div className="min-h-screen bg-void px-4 py-10 font-body text-txt">
       <div className="mx-auto max-w-5xl space-y-6">
-        <BackToFleet onBack={onBack} />
+        <BackToFleet ref={backButtonRef} onBack={onBack} />
 
         {/* Mission header — R4: the value badge rides in the header so no cost
             section ever appears without its value context. */}
@@ -125,16 +164,26 @@ export function MissionDetail({ missionId, onBack }: MissionDetailProps) {
           </div>
         </header>
 
-        {/* Section nav — the six mission sections, each a full v1 capability. */}
-        <nav aria-label="Mission sections" className="flex flex-wrap gap-2">
-          {SECTIONS.map((s) => {
+        {/* Section nav — ARIA tablist so keyboard users can arrow between sections.
+            Only the active tab is in the tab sequence (tabIndex 0); the rest are
+            reachable via Left/Right/Home/End (roving tabindex pattern). */}
+        <nav role="tablist" aria-label="Mission sections" className="flex flex-wrap gap-2">
+          {SECTIONS.map((s, idx) => {
             const active = section === s.tab;
             return (
               <button
                 key={s.tab}
+                ref={(el) => {
+                  sectionRefs.current[idx] = el;
+                }}
                 type="button"
+                role="tab"
+                id={`mission-tab-${s.tab}`}
+                aria-selected={active}
+                aria-controls={`mission-panel-${s.tab}`}
+                tabIndex={active ? 0 : -1}
                 onClick={() => setSection(s.tab)}
-                aria-current={active ? 'true' : undefined}
+                onKeyDown={(e) => handleSectionKey(e, idx)}
                 className={`rounded-full border px-3 py-1.5 font-mono text-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gate ${
                   active
                     ? 'border-gate bg-raised text-txt'
@@ -149,10 +198,14 @@ export function MissionDetail({ missionId, onBack }: MissionDetailProps) {
 
         {/* Active section body — the unchanged v1 tab, full depth. KpiCards rides
             above every section exactly as in the v1 detail panel (R4: value
-            anchors the KPI row). */}
+            anchors the KPI row). tabIndex={0} makes the panel focusable for
+            screen-reader users navigating with Enter from the tab row. */}
         <section
-          aria-label={activeSection?.label}
-          className="space-y-5 rounded-2xl border border-edge bg-deep p-6"
+          id={`mission-panel-${section}`}
+          role="tabpanel"
+          aria-labelledby={`mission-tab-${section}`}
+          tabIndex={0}
+          className="space-y-5 rounded-2xl border border-edge bg-deep p-6 focus:outline-none focus-visible:ring-2 focus-visible:ring-gate"
         >
           {/* Lineage caption — each mission section IS a full v1 capability. */}
           {activeSection && (
@@ -175,15 +228,20 @@ export function MissionDetail({ missionId, onBack }: MissionDetailProps) {
   );
 }
 
-function BackToFleet({ onBack }: { onBack: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onBack}
-      className="inline-flex items-center gap-1.5 font-mono text-xs text-sub transition-colors hover:text-txt focus:outline-none focus-visible:ring-2 focus-visible:ring-gate"
-    >
-      <span aria-hidden>←</span> Fleet
-    </button>
-  );
-}
+// forwardRef so MissionDetail can auto-focus the back button on mount.
+const BackToFleet = forwardRef<HTMLButtonElement, { onBack: () => void }>(
+  function BackToFleet({ onBack }, ref) {
+    return (
+      <button
+        ref={ref}
+        type="button"
+        onClick={onBack}
+        aria-label="Back to mission fleet"
+        className="inline-flex items-center gap-1.5 font-mono text-xs text-sub transition-colors hover:text-txt focus:outline-none focus-visible:ring-2 focus-visible:ring-gate"
+      >
+        <span aria-hidden>&#8592;</span> Fleet
+      </button>
+    );
+  },
+);
 
