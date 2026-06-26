@@ -118,7 +118,7 @@ Budget-bar color scale:
 
 ### FOCUS Ingest Mapping
 
-Cost data enters through `POST /ingest/focus` (FOCUS-compliant rows). The engine maps FOCUS columns onto the internal model:
+Cost data enters through `POST /ingest/focus` (FOCUS-compliant rows) and through source adapters (the attribution-source door). Ratio's canonical internal cost schema is **FOCUS v1.4**, with **per-environment, version-aware backwards compatibility across v1.0–v1.4**: a source/environment may export any FOCUS version in that range, and the seam upgrades it UP to the v1.4 canonical model while preserving backwards compatibility for environments pinned to an older version, per FOCUS's version & conformance rules. Cross-version deltas are additive (column additions, no breaking changes). The engine maps FOCUS columns onto the internal model:
 
 | FOCUS column | Internal mapping |
 |---|---|
@@ -131,7 +131,7 @@ Cost data enters through `POST /ingest/focus` (FOCUS-compliant rows). The engine
 | `UsageQuantity` | `workload.tokens` |
 | `PricingUnit` | `workload.unit_costs` derivation |
 
-Any org exporting FOCUS-formatted billing — any cloud, any AI service, any normalizer — can feed Ratio without custom integration work.
+Any org exporting FOCUS-formatted billing — any cloud, any AI service, any normalizer, at any FOCUS version v1.0–v1.4 — can feed Ratio without custom integration work; only the source adapter (auth, fetch, identity resolution) is source-specific, and the version-negotiation shim normalizes every export to the v1.4 canonical model.
 
 ### Positioning & Integration Tenets
 
