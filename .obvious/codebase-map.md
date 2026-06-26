@@ -2,7 +2,6 @@
 
 | Directory | Purpose |
 |---|---|
-| `docs` | Product design specification and handoff documentation for Ratio. |
 | `src` | React 18 + TypeScript application source for the Ratio FinOps UI. |
 | `src/agent` | AgentClient seam, data-grounded mock responder, and optional live Claude client. |
 | `src/components` | UI components for the 3-panel layout, workload list, detail tabs, and agent chat. |
