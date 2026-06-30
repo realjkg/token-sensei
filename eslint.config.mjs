@@ -1,4 +1,4 @@
-// ESLint flat config (ESLint v10+, react-hooks v5, typescript-eslint v8).
+// ESLint flat config (ESLint v10+, react-hooks v7, typescript-eslint v8).
 // Equivalent to the old .eslintrc.cjs rules, using the flat config API.
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
@@ -23,14 +23,22 @@ export default tseslint.config(
   js.configs.recommended,
   // TypeScript: @typescript-eslint/recommended
   ...tseslint.configs.recommended,
-  // React hooks: use the flat-config-aware 'recommended-latest' preset.
-  reactHooks.configs['recommended-latest'],
+  // React hooks: register plugin + the two stable rules only.
+  // We skip 'recommended-latest' which pulls in 15+ React-Compiler rules
+  // not relevant to this codebase (no React Compiler usage).
+  {
+    plugins: { 'react-hooks': reactHooks },
+    rules: {
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
+    },
+  },
   // Project-level overrides.
   {
     rules: {
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-      // Disable rules introduced in typescript-eslint v8 recommended that flag
-      // pre-existing code patterns not covered under the old v7 config.
+      // typescript-eslint v8 introduced this rule; disable it to avoid flagging
+      // pre-existing error-chaining patterns in the live client seams.
       'preserve-caught-error': 'off',
     },
   },
