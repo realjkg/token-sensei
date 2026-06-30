@@ -88,7 +88,8 @@ export function FindingsPage() {
           workloadId: finding.workloadId,
           workloadName: finding.workloadName,
           recommendedAction: finding.recommendedAction,
-          projectedMonthlyImpact: finding.projectedMonthlyImpact,
+          // CM seam expects a number; "not quantified" findings forward 0.
+          projectedMonthlyImpact: finding.projectedMonthlyImpact ?? 0,
         },
         finding.recommendedAction,
       );
@@ -405,21 +406,44 @@ function RecommendationPane({
         <p className="text-sm text-txt">{finding.recommendedAction}</p>
       </section>
 
-      {/* Projected impact — hero figure */}
+      {/* Projected impact — hero figure + honest qualification (Slice 5) */}
       <section aria-label="Projected monthly impact">
         <p className="mb-1 font-mono text-[10px] uppercase tracking-wider text-dim">
           Projected monthly impact
         </p>
-        {finding.projectedMonthlyImpact > 0 ? (
-          <span
-            className="font-mono text-3xl font-bold"
-            style={{ color: TOKEN_HEX.value }}
-          >
-            {formatUSD(finding.projectedMonthlyImpact)}
-          </span>
+        {finding.projectedMonthlyImpact !== null &&
+        finding.projectedMonthlyImpact > 0 ? (
+          <>
+            <div className="flex items-baseline gap-2">
+              {/* Bold hero per the visual register — value green. */}
+              <span
+                className="font-mono text-3xl font-bold"
+                style={{ color: TOKEN_HEX.value }}
+              >
+                {formatUSD(finding.projectedMonthlyImpact)}
+              </span>
+              <span className="font-mono text-xs text-dim">/mo lower spend</span>
+              {finding.projectedRatio !== null && (
+                <span className="font-mono text-xs text-sub">
+                  → {formatRatio(finding.projectedRatio)} ratio
+                </span>
+              )}
+            </div>
+          </>
         ) : (
-          <span className="font-mono text-lg text-dim">No estimate — monitor</span>
+          // Honest: impact that cannot be computed is never fabricated.
+          <span className="font-mono text-lg text-dim">Not quantified</span>
         )}
+
+        {/* Basis — what the figure is computed from (quiet). */}
+        <p className="mt-2 font-mono text-[10px] leading-relaxed text-dim">
+          <span className="uppercase tracking-wider">Basis </span>
+          {finding.impactBasis}
+        </p>
+        {/* Confidence / assumption note — never presents a projection as a saving. */}
+        <p className="mt-1 font-body text-xs leading-relaxed text-sub">
+          {finding.confidenceNote}
+        </p>
       </section>
 
       {/* Change-management / governance verbs */}
