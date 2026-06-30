@@ -1,5 +1,9 @@
-// Main Ratio app — the 3-panel FinOps dashboard (spec §3.1).
-import App from '@/App';
+// Wave 4 Slice 1: Findings is the home screen.
+// The 3-panel FinOps dashboard is now served at /workloads.
+import { FindingsPage } from '@/findings/FindingsPage';
 
-export default App;
+export default function Home() {
+  return <FindingsPage />;
+}
+
 
