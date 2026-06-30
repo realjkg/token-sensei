@@ -9,8 +9,10 @@ import { useStore } from '@/store/useStore';
 import { buildFindings, type FindingView } from './findingsModel';
 import { ValueRatioMeter } from './ValueRatioMeter';
 import { NavBar } from '@/components/layout/NavBar';
+import { SpendToValueGraph } from './SpendToValueGraph';
 import { formatUSD, formatRatio } from '@/lib/format';
 import { TOKEN_HEX } from '@/lib/scales';
+import type { Workload } from '@/types';
 
 export function FindingsPage() {
   const workloads = useStore((s) => s.workloads);
@@ -92,6 +94,7 @@ export function FindingsPage() {
           {selected ? (
             <RecommendationPane
               finding={selected}
+              allWorkloads={workloads}
               onApply={handleApply}
               onDismiss={() => handleDismiss(selected.workloadId)}
             />
@@ -170,10 +173,12 @@ function FindingRow({
 
 function RecommendationPane({
   finding,
+  allWorkloads,
   onApply,
   onDismiss,
 }: {
   finding: FindingView;
+  allWorkloads: Workload[];
   onApply: () => void;
   onDismiss: () => void;
 }) {
@@ -203,6 +208,17 @@ function RecommendationPane({
             label="Monthly spend"
             value={formatUSD(finding.monthlySpend)}
             color={TOKEN_HEX.cost}
+          />
+        </div>
+        {/* Spend-to-value graph — shows where this workload sits in the portfolio */}
+        <div className="mt-4 rounded-md border border-edge bg-slab p-3">
+          <p className="mb-3 font-mono text-[9px] uppercase tracking-wider text-dim">
+            Portfolio context — spend vs. value
+          </p>
+          <SpendToValueGraph
+            workloads={allWorkloads}
+            selectedWorkloadId={finding.workloadId}
+            size="large"
           />
         </div>
       </section>
