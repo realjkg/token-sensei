@@ -22,15 +22,20 @@ export interface GatewayEnv {
   NODE_ENV?: 'development' | 'production' | 'test';
   RATIO_API_TOKEN?: string;
   AI_PROVIDER?: string;
+  /** Wave 4 Slice 3: change-management provider selection. */
+  CM_PROVIDER?: string;
 }
 
-const LIVE_PROVIDERS = new Set(['claude', 'openai', 'openllm']);
+const LIVE_AI_PROVIDERS = new Set(['claude', 'openai', 'openllm']);
+const LIVE_CM_PROVIDERS = new Set(['jira', 'servicenow']);
 
 /** Decide whether to enforce Bearer auth from the server environment. */
 export function resolveGatewayAuth(env: GatewayEnv): GatewayAuthConfig {
   const token = env.RATIO_API_TOKEN?.trim() || null;
-  const provider = (env.AI_PROVIDER ?? '').toLowerCase();
-  const liveProvider = LIVE_PROVIDERS.has(provider);
+  const aiProvider = (env.AI_PROVIDER ?? '').toLowerCase();
+  const cmProvider = (env.CM_PROVIDER ?? '').toLowerCase();
+  const liveProvider =
+    LIVE_AI_PROVIDERS.has(aiProvider) || LIVE_CM_PROVIDERS.has(cmProvider);
   return { enforce: Boolean(token) || liveProvider, token };
 }
 
