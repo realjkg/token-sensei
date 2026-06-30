@@ -18,7 +18,7 @@ See `.obvious/codebase-map.md`.
 
 ## Design Guidance — Rules
 
-Durable, enforceable product rules for Ratio (codename `token-sensei`), promoted from the v1 design spec. The full narrative spec is an ephemeral Obvious artifact (`art_nWIhJYfZ`), **not** checked into the repo — see `doc-authoring` under `## Routine Skills`. Operating procedures (forecast math, agent prompt, reporting, observability) live as skills, not here.
+Durable, enforceable product rules for Ratio (codename `token-sensei`), promoted from the v1 design spec. The full narrative spec is an ephemeral Obvious artifact (`art_nWIhJYfZ`), **not** checked into the repo — see `doc-authoring` under `## Routine Skills`; the UI Direction north star is similarly promoted from ephemeral snapshot `art_lpwOxiaC`. Operating procedures (forecast math, agent prompt, reporting, observability) live as skills, not here.
 
 ### Design Principles (non-negotiable requirements)
 
@@ -139,6 +139,21 @@ Any org exporting FOCUS-formatted billing — any cloud, any AI service, any nor
 - **Publish, don't aggregate (anti-"7 dashboards").** Reject a consolidation single-pane; that is just a larger competing dashboard. Ratio is an embeddable engine — value/governance/forecast outputs surface inside the tools each persona already uses (Grafana `/metrics`, Slack `/agent/query`, `@ratio/react` SDK, webhooks). No one opens a 7th dashboard.
 - **One source of truth, persona-projected.** The same engine numbers, different lenses per persona (data analyst, FOCUS billing specialist, procurement/business, finance/leadership). No persona gets a divergent copy of the truth.
 - **Two ingest doors, one internal model.** `/ingest/focus` and a thin attribution-source adapter both normalize into one internal cost model (ideally FOCUS). Only the adapter (auth, fetch, identity resolution) is source-specific; the engine, forecasts, ratios, and UI stay provider- and source-agnostic.
+
+### UI Direction
+
+Target product direction promoted from the *UI Design Direction* snapshot (ephemeral Obvious artifact `art_lpwOxiaC`, June 2026). These are durable rules; the strategic narrative (Wiz thesis, competitor analysis, honest-risk) stays in the artifact, not the repo — see `doc-authoring`. **Status: Wave 4 target north star** — the current shipped executive surface predates this and is reconciled inline below.
+
+- **North-star metric (reinforces R4).** The headline is **value returned per inference dollar**, never savings. Every cost shown is paired with its value denominator.
+- **Findings-first IA.** The product surface collapses to **six objects: Overview, Findings, Workloads, Connectors, Frameworks, Reports.** **Findings is the home screen** — users land on a ranked list of value-ratio findings, **worst ratio first**, before any chart. Charts are evidence *inside* a finding, never the front door.
+  - *Reconciliation:* the shipped executive Initiative Dashboard becomes the **Overview** object; **Findings** becomes the new front door in Wave 4. Direction, not a retroactive change to shipped surfaces.
+- **Findings → recommendation flow.** Ranked findings left, recommendation right. Each finding carries exactly: (1) the value-ratio problem, (2) two evidence values — current ratio and current spend, (3) one recommended action, (4) projected monthly impact as the hero figure. The only verbs are **Select / Apply / Dismiss**. Applying adds to a quiet **"captured" tally** — no badges, confetti, streaks, or other gamified reward mechanics.
+- **Two signature components.** Build and reuse exactly two: the **value-ratio meter** (a single bar showing distance below the 1.0× value line — quiet in the list, enlarged in detail) and the **spend-to-value graph** (where cost flows and where value fails to return). Originality is one signature done well; do not add competing novel components.
+- **Visual register.** Calm, not loud — the Wiz / PointFive register, not a trading terminal. One type family with a monospace companion for data (per the existing Typography tokens). Generous whitespace, hairline borders. **Spend visual boldness only on the value-ratio meter and the projected-impact number;** everything else stays quiet.
+  - **Reserved accent.** Reserve a **single warm accent** for two roles only — the recommended-action CTA and the controlled-egress / air-gap paths. This is an emphasis role, distinct from the **semantic data palette** (`value`/`cost`/`shape`/`gate`/`unit`), which continues to encode data meaning. Do not introduce a second accent or spend the accent elsewhere. Exact accent token finalized at Wave 4 implementation (candidate: `shape` #ffc44d).
+- **Trust model, made visible.** Brokered egress is the default; an **air-gap SKU** serves regulated (FIS-class) buyers. Controlled-egress paths are surfaced in the UI and carry the reserved accent.
+- **Open-core & the 90-day hook.** The client is open source and free forever. Any time limit lives **only on the hosted connector** (cloud cost-API auth + agent inference through the broker) and is **enforced server-side with short-TTL credentials — never a local clock or a timer in open-source code.** The UI states the limit honestly in a single chip.
+- **Honest-risk guardrail.** The ranked findings queue rests on the **value-attribution methodology** — the unsolved hard problem and the first thing a skeptical CFO attacks. **The UI must never outrun the rigor of the attribution beneath it.** A polished ranked list built on attribution that does not hold up is worse than a plain one that does. Invest in the methodology as the real product; the UI earns trust, it does not substitute for it.
 
 ## Routine Skills
 
