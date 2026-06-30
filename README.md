@@ -1,4 +1,4 @@
-# Ratio
+# Ratio platform
 
 **AI-native FinOps for AI workloads.** Ratio governs *value ratios* — the return
 on every inference dollar — not just raw cost. It pairs every cost with its value
